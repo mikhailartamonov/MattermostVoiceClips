@@ -76,7 +76,6 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Get the file from form
 	var file multipart.File
 	var handler *multipart.FileHeader
-	var err error
 
 	if isVideo {
 		file, handler, err = r.FormFile("video")
@@ -168,7 +167,12 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 	durationStr := r.FormValue("duration")
 	duration := 0
 	if durationStr != "" {
-		duration, _ = strconv.Atoi(durationStr)
+		var parseErr error
+		duration, parseErr = strconv.Atoi(durationStr)
+		if parseErr != nil {
+			p.API.LogWarn("Invalid duration format", "duration", durationStr, "error", parseErr.Error())
+			duration = 0
+		}
 		// Validate against max duration from config
 		if duration > config.MaxDuration {
 			http.Error(w, fmt.Sprintf("Duration exceeds maximum allowed (%d seconds)", config.MaxDuration), http.StatusBadRequest)
