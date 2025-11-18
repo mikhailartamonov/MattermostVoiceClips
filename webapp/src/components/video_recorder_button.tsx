@@ -38,6 +38,15 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         };
     }, []);
 
+    // Cleanup URL object to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const requestPermission = async () => {
         try {
             // Request square video for circular display (Telegram-style)

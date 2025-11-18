@@ -14,60 +14,75 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestIsValidAudioFile(t *testing.T) {
+func TestIsValidMediaFile(t *testing.T) {
 	tests := []struct {
 		name      string
 		data      []byte
 		extension string
+		isVideo   bool
 		expected  bool
 	}{
 		{
-			name:      "Valid WebM file",
+			name:      "Valid WebM audio file",
 			data:      []byte{0x1A, 0x45, 0xDF, 0xA3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			extension: ".webm",
+			isVideo:   false,
+			expected:  true,
+		},
+		{
+			name:      "Valid WebM video file",
+			data:      []byte{0x1A, 0x45, 0xDF, 0xA3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			extension: ".webm",
+			isVideo:   true,
 			expected:  true,
 		},
 		{
 			name:      "Invalid WebM file",
 			data:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			extension: ".webm",
+			isVideo:   false,
 			expected:  false,
 		},
 		{
 			name:      "Valid OGG file",
 			data:      []byte("OggS" + string(make([]byte, 8))),
 			extension: ".ogg",
+			isVideo:   false,
 			expected:  true,
 		},
 		{
 			name:      "Invalid OGG file",
 			data:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			extension: ".ogg",
+			isVideo:   false,
 			expected:  false,
 		},
 		{
-			name:      "Valid MP4 file",
+			name:      "Valid MP4 video file",
 			data:      []byte{0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x00, 0x00, 0x00, 0x00}, // ftyp at offset 4
 			extension: ".mp4",
+			isVideo:   true,
 			expected:  true,
 		},
 		{
 			name:      "Valid WAV file",
 			data:      []byte("RIFF" + string(make([]byte, 4)) + "WAVE"),
 			extension: ".wav",
+			isVideo:   false,
 			expected:  true,
 		},
 		{
 			name:      "File too small",
 			data:      []byte{0x00, 0x00},
 			extension: ".webm",
+			isVideo:   false,
 			expected:  false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isValidAudioFile(tt.data, tt.extension)
+			result := isValidMediaFile(tt.data, tt.extension, tt.isVideo)
 			assert.Equal(t, tt.expected, result, "Expected %v for %s", tt.expected, tt.name)
 		})
 	}
