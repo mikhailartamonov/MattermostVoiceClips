@@ -78,6 +78,27 @@ func TestIsValidMediaFile(t *testing.T) {
 			isVideo:   false,
 			expected:  false,
 		},
+		{
+			name:      "Valid MP3 with ID3 tag",
+			data:      []byte("ID3" + string(make([]byte, 9))),
+			extension: ".mp3",
+			isVideo:   false,
+			expected:  true,
+		},
+		{
+			name:      "Valid MP3 with frame sync",
+			data:      []byte{0xFF, 0xFB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			extension: ".mp3",
+			isVideo:   false,
+			expected:  true,
+		},
+		{
+			name:      "Valid AAC file",
+			data:      []byte{0xFF, 0xF1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			extension: ".aac",
+			isVideo:   false,
+			expected:  true,
+		},
 	}
 
 	for _, tt := range tests {

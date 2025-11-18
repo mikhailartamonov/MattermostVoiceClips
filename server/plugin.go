@@ -137,6 +137,8 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 			".ogg":  "audio/ogg",
 			".mp4":  "audio/mp4",
 			".m4a":  "audio/mp4",
+			".mp3":  "audio/mpeg",
+			".aac":  "audio/aac",
 			".wav":  "audio/wav",
 		}
 	}
@@ -146,7 +148,7 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		if isVideo {
 			http.Error(w, "Invalid video file format. Allowed: webm, mp4, mov", http.StatusBadRequest)
 		} else {
-			http.Error(w, "Invalid audio file format. Allowed: webm, ogg, mp4, m4a, wav", http.StatusBadRequest)
+			http.Error(w, "Invalid audio file format. Allowed: webm, ogg, mp4, m4a, mp3, aac, wav", http.StatusBadRequest)
 		}
 		return
 	}
@@ -365,6 +367,15 @@ func isValidMediaFile(data []byte, extension string, isVideo bool) bool {
 			return false
 		}
 		return string(data[0:4]) == "RIFF" && string(data[8:12]) == "WAVE"
+	case ".mp3":
+		// MP3 starts with ID3 tag or frame sync (0xFF 0xFB/0xFA/0xF3/0xF2)
+		if string(data[0:3]) == "ID3" {
+			return true
+		}
+		return data[0] == 0xFF && (data[1]&0xE0) == 0xE0
+	case ".aac":
+		// AAC ADTS starts with 0xFF 0xF1 or 0xFF 0xF9
+		return data[0] == 0xFF && (data[1] == 0xF1 || data[1] == 0xF9 || (data[1]&0xF0) == 0xF0)
 	}
 
 	// If we can't validate, allow it (be permissive for unknown formats)

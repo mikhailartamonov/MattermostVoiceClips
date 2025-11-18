@@ -19,28 +19,41 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
     const animationRef = useRef<number | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
+    const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
     useEffect(() => {
         if (!audioElement) return;
 
         // Create audio context and analyser
         const initAudioContext = () => {
+            // Check if already connected to prevent errors
+            if (sourceRef.current) {
+                return;
+            }
+
             if (!audioContextRef.current) {
                 const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
                 audioContextRef.current = new AudioContext();
+            }
 
+            if (!analyserRef.current) {
                 const analyser = audioContextRef.current.createAnalyser();
                 analyser.fftSize = 256;
                 analyserRef.current = analyser;
 
-                const source = audioContextRef.current.createMediaElementSource(audioElement);
-                source.connect(analyser);
-                analyser.connect(audioContextRef.current.destination);
+                try {
+                    const source = audioContextRef.current.createMediaElementSource(audioElement);
+                    sourceRef.current = source;
+                    source.connect(analyser);
+                    analyser.connect(audioContextRef.current.destination);
+                } catch (err) {
+                    // Audio element already connected to another context
+                }
             }
         };
 
         // Initialize on first play
-        if (isPlaying && !audioContextRef.current) {
+        if (isPlaying && !sourceRef.current) {
             initAudioContext();
         }
 
@@ -50,6 +63,17 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
             }
         };
     }, [audioElement, isPlaying]);
+
+    // Cleanup AudioContext on unmount
+    useEffect(() => {
+        return () => {
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {
+                    // Ignore close errors
+                });
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -107,26 +131,22 @@ const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
         ctx.fillStyle = '#f5f5f5';
         ctx.fillRect(0, 0, w, h);
 
-        // Draw a static waveform pattern
-        ctx.strokeStyle = barColor;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
+        // Draw a static waveform pattern using deterministic values
+        ctx.fillStyle = barColor;
 
-        const segments = 50;
-        const segmentWidth = w / segments;
+        const barCount = 40;
+        const barWidth = w / barCount - 2;
+        const barSpacing = 2;
 
-        for (let i = 0; i < segments; i++) {
-            const x = i * segmentWidth;
-            const y = h / 2 + Math.sin(i * 0.5) * (h / 4) * Math.random();
+        for (let i = 0; i < barCount; i++) {
+            const x = i * (barWidth + barSpacing);
+            // Use sin/cos for deterministic wave pattern
+            const amplitude = Math.sin(i * 0.3) * Math.cos(i * 0.15) + 0.5;
+            const barHeight = Math.max(2, amplitude * h * 0.6);
+            const y = (h - barHeight) / 2;
 
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            ctx.fillRect(x, y, barWidth, barHeight);
         }
-
-        ctx.stroke();
     };
 
     return (
