@@ -69,7 +69,6 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             setErrorMessage('');
             return true;
         } catch (err) {
-            console.error('Error requesting camera permission:', err);
             setHasPermission(false);
             setErrorMessage('Camera/microphone permission denied. Please allow access to record video messages.');
             return false;
@@ -118,7 +117,6 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setDuration((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            console.error('Error starting recording:', err);
             setErrorMessage('Failed to start recording. Please try again.');
         }
     };
@@ -202,8 +200,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 throw new Error('Upload failed');
             }
 
-            const result = await response.json();
-            console.log('Video clip uploaded:', result);
+            await response.json();
 
             if (onRecordingComplete) {
                 onRecordingComplete(blob, dur);
@@ -215,7 +212,6 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setPreviewUrl('');
             }, 1000);
         } catch (err) {
-            console.error('Error uploading video clip:', err);
             setErrorMessage('Failed to upload video clip. Please try again.');
         }
     };
