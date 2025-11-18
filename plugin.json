@@ -21,32 +21,136 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "Configure Voice Clips plugin settings.",
+        "header": "Configure Voice & Video Clips plugin settings.",
         "footer": "",
         "settings": [
             {
                 "key": "MaxDuration",
-                "display_name": "Maximum Recording Duration (seconds)",
+                "display_name": "Maximum Audio Recording Duration (seconds)",
                 "type": "number",
                 "help_text": "Maximum duration for voice recordings in seconds. Default is 300 (5 minutes).",
                 "placeholder": "300",
                 "default": 300
             },
             {
+                "key": "MaxVideoDuration",
+                "display_name": "Maximum Video Recording Duration (seconds)",
+                "type": "number",
+                "help_text": "Maximum duration for video recordings in seconds. Default is 120 (2 minutes).",
+                "placeholder": "120",
+                "default": 120
+            },
+            {
+                "key": "MaxAudioFileSize",
+                "display_name": "Maximum Audio File Size (MB)",
+                "type": "number",
+                "help_text": "Maximum file size for audio uploads in megabytes. Default is 50 MB.",
+                "placeholder": "50",
+                "default": 50
+            },
+            {
+                "key": "MaxVideoFileSize",
+                "display_name": "Maximum Video File Size (MB)",
+                "type": "number",
+                "help_text": "Maximum file size for video uploads in megabytes. Default is 100 MB.",
+                "placeholder": "100",
+                "default": 100
+            },
+            {
                 "key": "AudioFormat",
-                "display_name": "Audio Format",
+                "display_name": "Preferred Audio Format",
                 "type": "dropdown",
-                "help_text": "Preferred audio format for storing voice clips.",
+                "help_text": "Preferred audio format for storing voice clips. Browser will use the best supported format.",
                 "placeholder": "webm",
                 "default": "webm",
                 "options": [
                     {
-                        "display_name": "WebM (Opus codec) - Best for web and mobile",
+                        "display_name": "WebM (Opus) - Best for Chrome, Firefox",
                         "value": "webm"
                     },
                     {
-                        "display_name": "MP4 (AAC codec) - Universal compatibility",
+                        "display_name": "OGG (Opus) - Best for Firefox on Linux",
+                        "value": "ogg"
+                    },
+                    {
+                        "display_name": "MP4 (AAC) - Best for iOS Safari",
                         "value": "mp4"
+                    }
+                ]
+            },
+            {
+                "key": "VideoFormat",
+                "display_name": "Preferred Video Format",
+                "type": "dropdown",
+                "help_text": "Preferred video format for storing video clips. Browser will use the best supported format.",
+                "placeholder": "webm",
+                "default": "webm",
+                "options": [
+                    {
+                        "display_name": "WebM (VP9/VP8) - Best for Chrome, Firefox",
+                        "value": "webm"
+                    },
+                    {
+                        "display_name": "MP4 (H.264) - Best for iOS Safari",
+                        "value": "mp4"
+                    }
+                ]
+            },
+            {
+                "key": "AudioBitrate",
+                "display_name": "Audio Bitrate (kbps)",
+                "type": "dropdown",
+                "help_text": "Audio quality setting. Higher bitrate means better quality but larger files.",
+                "default": 128,
+                "options": [
+                    {
+                        "display_name": "64 kbps - Low quality, small files",
+                        "value": 64
+                    },
+                    {
+                        "display_name": "96 kbps - Medium quality",
+                        "value": 96
+                    },
+                    {
+                        "display_name": "128 kbps - Good quality (recommended)",
+                        "value": 128
+                    },
+                    {
+                        "display_name": "192 kbps - High quality",
+                        "value": 192
+                    },
+                    {
+                        "display_name": "256 kbps - Very high quality",
+                        "value": 256
+                    }
+                ]
+            },
+            {
+                "key": "VideoBitrate",
+                "display_name": "Video Bitrate (kbps)",
+                "type": "dropdown",
+                "help_text": "Video quality setting. Higher bitrate means better quality but larger files.",
+                "default": 1500,
+                "options": [
+                    {
+                        "display_name": "500 kbps - Low quality, small files",
+                        "value": 500
+                    },
+                    {
+                        "display_name": "1000 kbps - Medium quality",
+                        "value": 1000
+                    },
+                    {
+                        "display_name": "1500 kbps - Good quality (recommended)",
+                        "value": 1500
+                    },
+                    {
+                        "display_name": "2500 kbps - High quality",
+                        "value": 2500
+                    },
+                    {
+                        "display_name": "4000 kbps - Very high quality",
+                        "value": 4000
                     }
                 ]
             },
@@ -56,6 +160,22 @@
                 "type": "bool",
                 "help_text": "Show audio waveform during playback.",
                 "default": true
+            },
+            {
+                "key": "AllowedAudioFormats",
+                "display_name": "Allowed Audio Formats",
+                "type": "text",
+                "help_text": "Comma-separated list of allowed audio file extensions (without dots). Example: webm,ogg,mp4,m4a,mp3,aac,wav",
+                "placeholder": "webm,ogg,mp4,m4a,mp3,aac,wav",
+                "default": "webm,ogg,mp4,m4a,mp3,aac,wav"
+            },
+            {
+                "key": "AllowedVideoFormats",
+                "display_name": "Allowed Video Formats",
+                "type": "text",
+                "help_text": "Comma-separated list of allowed video file extensions (without dots). Example: webm,mp4,mov",
+                "placeholder": "webm,mp4,mov",
+                "default": "webm,mp4,mov"
             }
         ]
     }

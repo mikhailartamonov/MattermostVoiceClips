@@ -1,5 +1,6 @@
 import React, {useEffect, useState, useRef} from 'react';
 import {getAudioRecorder, isPauseResumeSupported, getFileExtensionForMimeType} from '../utils/audio_recorder';
+import {fetchPluginConfig, getAudioBitrate, getMaxAudioDuration} from '../utils/config_service';
 
 interface VoiceRecorderButtonProps {
     channelId?: string;
@@ -13,13 +14,17 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>('');
+    const [maxDuration, setMaxDuration] = useState(300);
 
     const recorderRef = useRef<any>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         // Listen for custom event to open recorder
-        const handleOpenRecorder = () => {
+        const handleOpenRecorder = async () => {
+            // Load config when opening
+            await fetchPluginConfig();
+            setMaxDuration(getMaxAudioDuration());
             setIsModalOpen(true);
         };
 
@@ -32,6 +37,13 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             }
         };
     }, []);
+
+    // Auto-stop when max duration reached
+    useEffect(() => {
+        if (isRecording && duration >= maxDuration) {
+            stopRecording();
+        }
+    }, [duration, maxDuration, isRecording]);
 
     const requestPermission = async () => {
         try {
@@ -54,7 +66,9 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
         }
 
         try {
-            const recorder = await getAudioRecorder();
+            // Get audio bitrate from config
+            const audioBitrate = getAudioBitrate();
+            const recorder = await getAudioRecorder(audioBitrate);
             recorderRef.current = recorder;
 
             recorder.start();
