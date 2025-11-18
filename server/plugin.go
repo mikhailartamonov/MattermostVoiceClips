@@ -96,11 +96,19 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate file size (max 100 MB for video, 50 MB for audio)
+	// Validate file size using config
 	config := p.getConfiguration()
-	maxFileSize := int64(50 * 1024 * 1024) // 50 MB
+	var maxFileSize int64
 	if isVideo {
-		maxFileSize = 100 * 1024 * 1024 // 100 MB for video
+		maxFileSize = int64(config.MaxVideoFileSize) * 1024 * 1024
+		if maxFileSize == 0 {
+			maxFileSize = 100 * 1024 * 1024 // Default 100 MB for video
+		}
+	} else {
+		maxFileSize = int64(config.MaxAudioFileSize) * 1024 * 1024
+		if maxFileSize == 0 {
+			maxFileSize = 50 * 1024 * 1024 // Default 50 MB for audio
+		}
 	}
 	if int64(len(data)) > maxFileSize {
 		http.Error(w, fmt.Sprintf("File size exceeds maximum allowed (%d MB)", maxFileSize/(1024*1024)), http.StatusRequestEntityTooLarge)
@@ -123,32 +131,35 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate file extension
-	var allowedExtensions map[string]string
+	// Validate file extension using config
+	var allowedFormats string
 	if isVideo {
-		allowedExtensions = map[string]string{
-			".webm": "video/webm",
-			".mp4":  "video/mp4",
-			".mov":  "video/quicktime",
+		allowedFormats = config.AllowedVideoFormats
+		if allowedFormats == "" {
+			allowedFormats = "webm,mp4,mov"
 		}
 	} else {
-		allowedExtensions = map[string]string{
-			".webm": "audio/webm",
-			".ogg":  "audio/ogg",
-			".mp4":  "audio/mp4",
-			".m4a":  "audio/mp4",
-			".mp3":  "audio/mpeg",
-			".aac":  "audio/aac",
-			".wav":  "audio/wav",
+		allowedFormats = config.AllowedAudioFormats
+		if allowedFormats == "" {
+			allowedFormats = "webm,ogg,mp4,m4a,mp3,aac,wav"
 		}
 	}
 
-	_, validExtension := allowedExtensions[strings.ToLower(extension)]
-	if !validExtension {
+	// Parse allowed formats from config
+	allowedList := strings.Split(allowedFormats, ",")
+	allowedExtensions := make(map[string]bool)
+	for _, ext := range allowedList {
+		ext = strings.TrimSpace(ext)
+		if ext != "" {
+			allowedExtensions["."+ext] = true
+		}
+	}
+
+	if !allowedExtensions[strings.ToLower(extension)] {
 		if isVideo {
-			http.Error(w, "Invalid video file format. Allowed: webm, mp4, mov", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Invalid video file format. Allowed: %s", allowedFormats), http.StatusBadRequest)
 		} else {
-			http.Error(w, "Invalid audio file format. Allowed: webm, ogg, mp4, m4a, mp3, aac, wav", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Invalid audio file format. Allowed: %s", allowedFormats), http.StatusBadRequest)
 		}
 		return
 	}
@@ -175,9 +186,21 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 			p.API.LogWarn("Invalid duration format", "duration", durationStr, "error", parseErr.Error())
 			duration = 0
 		}
-		// Validate against max duration from config
-		if duration > config.MaxDuration {
-			http.Error(w, fmt.Sprintf("Duration exceeds maximum allowed (%d seconds)", config.MaxDuration), http.StatusBadRequest)
+		// Validate against max duration from config (separate for audio and video)
+		var maxDuration int
+		if isVideo {
+			maxDuration = config.MaxVideoDuration
+			if maxDuration == 0 {
+				maxDuration = 120 // Default 2 minutes for video
+			}
+		} else {
+			maxDuration = config.MaxDuration
+			if maxDuration == 0 {
+				maxDuration = 300 // Default 5 minutes for audio
+			}
+		}
+		if duration > maxDuration {
+			http.Error(w, fmt.Sprintf("Duration exceeds maximum allowed (%d seconds)", maxDuration), http.StatusBadRequest)
 			return
 		}
 	}
@@ -253,9 +276,22 @@ func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	response := map[string]interface{}{
-		"max_duration":   config.MaxDuration,
-		"audio_format":   config.AudioFormat,
-		"enable_waveform": config.EnableWaveform,
+		// Audio settings
+		"max_duration":        config.MaxDuration,
+		"audio_format":        config.AudioFormat,
+		"enable_waveform":     config.EnableWaveform,
+		"max_audio_file_size": config.MaxAudioFileSize,
+		"audio_bitrate":       config.AudioBitrate,
+
+		// Video settings
+		"max_video_duration":  config.MaxVideoDuration,
+		"video_format":        config.VideoFormat,
+		"max_video_file_size": config.MaxVideoFileSize,
+		"video_bitrate":       config.VideoBitrate,
+
+		// Allowed formats
+		"allowed_audio_formats": config.AllowedAudioFormats,
+		"allowed_video_formats": config.AllowedVideoFormats,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -1,5 +1,6 @@
 import React, {useEffect, useState, useRef} from 'react';
 import {isIOS, isPauseResumeSupported, getVideoMimeType, getFileExtensionForMimeType} from '../utils/audio_recorder';
+import {fetchPluginConfig, getVideoBitrate, getMaxVideoDuration} from '../utils/config_service';
 
 interface VideoRecorderButtonProps {
     channelId?: string;
@@ -14,6 +15,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [previewUrl, setPreviewUrl] = useState<string>('');
+    const [maxDuration, setMaxDuration] = useState(120);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,7 +24,10 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        const handleOpenRecorder = () => {
+        const handleOpenRecorder = async () => {
+            // Load config when opening
+            await fetchPluginConfig();
+            setMaxDuration(getMaxVideoDuration());
             setIsModalOpen(true);
         };
 
@@ -38,6 +43,13 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             }
         };
     }, []);
+
+    // Auto-stop when max duration reached
+    useEffect(() => {
+        if (isRecording && duration >= maxDuration) {
+            stopRecording();
+        }
+    }, [duration, maxDuration, isRecording]);
 
     // Cleanup URL object to prevent memory leaks
     useEffect(() => {
@@ -94,8 +106,11 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             // Get platform-appropriate video codec
             const mimeType = getVideoMimeType();
 
+            // Get video bitrate from config
+            const videoBitrate = getVideoBitrate();
+
             const recorderOptions: MediaRecorderOptions = {
-                videoBitsPerSecond: 1500000, // 1.5 Mbps for smaller circular video
+                videoBitsPerSecond: videoBitrate,
             };
 
             // Only set mimeType if it's not empty

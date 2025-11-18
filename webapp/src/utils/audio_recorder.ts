@@ -56,12 +56,12 @@ class MediaRecorderWrapper implements AudioRecorder {
     private stream: MediaStream | null = null;
     private mimeType: string;
 
-    constructor(stream: MediaStream, mimeType: string) {
+    constructor(stream: MediaStream, mimeType: string, audioBitrate: number = 128000) {
         this.stream = stream;
         this.mimeType = mimeType;
 
         const options: MediaRecorderOptions = {
-            audioBitsPerSecond: 128000,
+            audioBitsPerSecond: audioBitrate,
         };
 
         // Only set mimeType if it's not empty and supported
@@ -74,7 +74,7 @@ class MediaRecorderWrapper implements AudioRecorder {
         } catch (err) {
             // If mimeType is not supported, try without it
             this.mediaRecorder = new MediaRecorder(stream, {
-                audioBitsPerSecond: 128000,
+                audioBitsPerSecond: audioBitrate,
             });
         }
 
@@ -238,8 +238,9 @@ export function isAudioRecordingSupported(): boolean {
 /**
  * Get audio recorder instance
  * This will work on desktop, web, iOS (Safari 14.3+), and Android (Chrome)
+ * @param audioBitrate - Audio bitrate in bps (default: 128000)
  */
-export async function getAudioRecorder(): Promise<AudioRecorder> {
+export async function getAudioRecorder(audioBitrate: number = 128000): Promise<AudioRecorder> {
     if (!isAudioRecordingSupported()) {
         throw new Error('Audio recording is not supported in this browser');
     }
@@ -259,7 +260,7 @@ export async function getAudioRecorder(): Promise<AudioRecorder> {
         const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
         const mimeType = getSupportedMimeType();
 
-        return new MediaRecorderWrapper(stream, mimeType);
+        return new MediaRecorderWrapper(stream, mimeType, audioBitrate);
     } catch (err) {
         throw new Error('Failed to access microphone. Please check permissions.');
     }
