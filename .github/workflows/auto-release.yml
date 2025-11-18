@@ -1,0 +1,101 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'plugin.json'
+      - 'server/**'
+      - 'webapp/**'
+
+jobs:
+  check-version:
+    name: Check Version and Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Get version from plugin.json
+        id: version
+        run: |
+          VERSION=$(grep '"version"' plugin.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag v${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag v${{ steps.version.outputs.version }} does not exist"
+          fi
+
+      - name: Set up Go
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version: '1.23'
+          cache-dependency-path: server/go.sum
+
+      - name: Set up Node.js
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Run tests
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd server
+          go test -v -race ./...
+
+      - name: Build and package plugin
+        if: steps.check_tag.outputs.exists == 'false'
+        run: make dist
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Auto-release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.2.0
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          files: dist/*.tar.gz
+          generate_release_notes: true
+          body: |
+            ## Voice & Video Clips Plugin ${{ steps.version.outputs.version }}
+
+            Automatic release created from commit ${{ github.sha }}
+
+            ### Installation
+            Download the `.tar.gz` file and upload to your Mattermost instance via:
+            **System Console → Plugins → Plugin Management**
+
+            ### Features
+            - Cross-platform voice and video messaging
+            - Works on desktop, web, iOS and Android
+            - Configurable recording limits and quality
+            - Audio waveform visualization
+            - Multiple audio/video format support
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
