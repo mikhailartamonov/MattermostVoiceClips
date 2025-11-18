@@ -4,7 +4,7 @@ import VoiceRecorderButton from './components/voice_recorder_button';
 import VoiceClipPlayer from './components/voice_clip_player';
 import VideoRecorderButton from './components/video_recorder_button';
 import VideoClipPlayer from './components/video_clip_player';
-import {initializeLanguage, t} from './i18n/translations';
+import {initI18n, t} from './i18n/translations';
 import {playVoiceMessageSound, playVideoMessageSound} from './utils/notification_sound';
 
 // PluginRegistry is injected by Mattermost
@@ -31,7 +31,7 @@ const RecordersRoot: React.FC = () => (
 class Plugin {
     public async initialize(registry: PluginRegistry, store: Store) {
         // Initialize i18n with system language
-        initializeLanguage();
+        initI18n();
 
         // Register voice recorder button in channel header
         registry.registerChannelHeaderButtonAction(
