@@ -1,0 +1,32 @@
+# Build artifacts
+dist/
+*.tar.gz
+*.zip
+
+# Server
+server/dist/
+server/vendor/
+
+# Webapp
+webapp/node_modules/
+webapp/dist/
+webapp/.eslintcache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local

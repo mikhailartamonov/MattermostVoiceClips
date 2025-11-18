@@ -1,0 +1,62 @@
+{
+    "id": "com.mattermost.voice-clips",
+    "name": "Voice Clips",
+    "description": "Cross-platform voice messaging plugin for Mattermost that works on desktop, web, iOS and Android",
+    "homepage_url": "https://github.com/mikhailartamonov/MattermostVoiceClips",
+    "support_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/issues",
+    "release_notes_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/releases",
+    "icon_path": "assets/icon.svg",
+    "version": "0.1.0",
+    "min_server_version": "7.1.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Configure Voice Clips plugin settings.",
+        "footer": "",
+        "settings": [
+            {
+                "key": "MaxDuration",
+                "display_name": "Maximum Recording Duration (seconds)",
+                "type": "number",
+                "help_text": "Maximum duration for voice recordings in seconds. Default is 300 (5 minutes).",
+                "placeholder": "300",
+                "default": 300
+            },
+            {
+                "key": "AudioFormat",
+                "display_name": "Audio Format",
+                "type": "dropdown",
+                "help_text": "Preferred audio format for storing voice clips.",
+                "placeholder": "webm",
+                "default": "webm",
+                "options": [
+                    {
+                        "display_name": "WebM (Opus codec) - Best for web and mobile",
+                        "value": "webm"
+                    },
+                    {
+                        "display_name": "MP4 (AAC codec) - Universal compatibility",
+                        "value": "mp4"
+                    }
+                ]
+            },
+            {
+                "key": "EnableWaveform",
+                "display_name": "Enable Waveform Visualization",
+                "type": "bool",
+                "help_text": "Show audio waveform during playback.",
+                "default": true
+            }
+        ]
+    }
+}
