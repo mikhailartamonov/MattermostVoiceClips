@@ -1,4 +1,5 @@
 import React, {useEffect, useState, useRef} from 'react';
+import {isIOS, isPauseResumeSupported, getVideoMimeType, getFileExtensionForMimeType} from '../utils/audio_recorder';
 
 interface VideoRecorderButtonProps {
     channelId?: string;
@@ -49,14 +50,22 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
     const requestPermission = async () => {
         try {
-            // Request square video for circular display (Telegram-style)
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
+            // iOS has limited support for video constraints
+            const videoConstraints = isIOS()
+                ? {
+                    width: {ideal: 480},
+                    height: {ideal: 480},
+                    facingMode: 'user',
+                }
+                : {
                     width: {ideal: 480, max: 720},
                     height: {ideal: 480, max: 720},
                     aspectRatio: {ideal: 1},
                     facingMode: 'user',
-                },
+                };
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: videoConstraints,
                 audio: true,
             });
 
@@ -82,16 +91,19 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         }
 
         try {
-            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-                ? 'video/webm;codecs=vp9,opus'
-                : MediaRecorder.isTypeSupported('video/webm')
-                ? 'video/webm'
-                : 'video/mp4';
+            // Get platform-appropriate video codec
+            const mimeType = getVideoMimeType();
 
-            const recorder = new MediaRecorder(streamRef.current, {
-                mimeType,
+            const recorderOptions: MediaRecorderOptions = {
                 videoBitsPerSecond: 1500000, // 1.5 Mbps for smaller circular video
-            });
+            };
+
+            // Only set mimeType if it's not empty
+            if (mimeType) {
+                recorderOptions.mimeType = mimeType;
+            }
+
+            const recorder = new MediaRecorder(streamRef.current, recorderOptions);
 
             chunksRef.current = [];
 
@@ -102,10 +114,11 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             };
 
             recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, {type: mimeType});
+                const actualMimeType = recorder.mimeType || mimeType;
+                const blob = new Blob(chunksRef.current, {type: actualMimeType});
                 const url = URL.createObjectURL(blob);
                 setPreviewUrl(url);
-                uploadVideo(blob, duration);
+                uploadVideo(blob, duration, actualMimeType);
             };
 
             recorder.start(100);
@@ -122,7 +135,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     };
 
     const pauseRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
+        if (mediaRecorderRef.current && isRecording && isPauseResumeSupported()) {
             mediaRecorderRef.current.pause();
             setIsPaused(true);
             if (timerRef.current) {
@@ -132,7 +145,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     };
 
     const resumeRecording = () => {
-        if (mediaRecorderRef.current && isPaused) {
+        if (mediaRecorderRef.current && isPaused && isPauseResumeSupported()) {
             mediaRecorderRef.current.resume();
             setIsPaused(false);
 
@@ -180,11 +193,13 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         setIsModalOpen(false);
     };
 
-    const uploadVideo = async (blob: Blob, dur: number) => {
+    const uploadVideo = async (blob: Blob, dur: number, mimeType: string) => {
         const formData = new FormData();
         const currentChannelId = channelId || getCurrentChannelId();
 
-        formData.append('video', blob, `video_clip_${Date.now()}.webm`);
+        // Use correct file extension based on actual mime type
+        const extension = getFileExtensionForMimeType(mimeType);
+        formData.append('video', blob, `video_clip_${Date.now()}${extension}`);
         formData.append('channel_id', currentChannelId);
         formData.append('duration', dur.toString());
         formData.append('type', 'video');
@@ -298,16 +313,18 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
                                     {isRecording && !isPaused && (
                                         <>
-                                            <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
-                                                ⏸ Pause
-                                            </button>
+                                            {isPauseResumeSupported() && (
+                                                <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
+                                                    ⏸ Pause
+                                                </button>
+                                            )}
                                             <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
                                                 ⏹ Stop & Send
                                             </button>
                                         </>
                                     )}
 
-                                    {isRecording && isPaused && (
+                                    {isRecording && isPaused && isPauseResumeSupported() && (
                                         <>
                                             <button onClick={resumeRecording} style={{...buttonStyle, ...resumeButtonStyle}}>
                                                 ▶️ Resume
@@ -351,8 +368,9 @@ const contentStyle: React.CSSProperties = {
     backgroundColor: 'white',
     borderRadius: '12px',
     padding: '0',
-    width: '360px',
-    maxWidth: '90%',
+    width: '100%',
+    minWidth: '280px',
+    maxWidth: 'min(360px, 90vw)',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
 };
 
