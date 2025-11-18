@@ -40,10 +40,12 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
     const requestPermission = async () => {
         try {
+            // Request square video for circular display (Telegram-style)
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    width: {ideal: 1280},
-                    height: {ideal: 720},
+                    width: {ideal: 480, max: 720},
+                    height: {ideal: 480, max: 720},
+                    aspectRatio: {ideal: 1},
                     facingMode: 'user',
                 },
                 audio: true,
@@ -72,7 +74,6 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         }
 
         try {
-            // Determine best MIME type
             const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
                 ? 'video/webm;codecs=vp9,opus'
                 : MediaRecorder.isTypeSupported('video/webm')
@@ -81,7 +82,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
             const recorder = new MediaRecorder(streamRef.current, {
                 mimeType,
-                videoBitsPerSecond: 2500000, // 2.5 Mbps
+                videoBitsPerSecond: 1500000, // 1.5 Mbps for smaller circular video
             });
 
             chunksRef.current = [];
@@ -172,13 +173,13 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         setIsModalOpen(false);
     };
 
-    const uploadVideo = async (blob: Blob, duration: number) => {
+    const uploadVideo = async (blob: Blob, dur: number) => {
         const formData = new FormData();
         const currentChannelId = channelId || getCurrentChannelId();
 
         formData.append('video', blob, `video_clip_${Date.now()}.webm`);
         formData.append('channel_id', currentChannelId);
-        formData.append('duration', duration.toString());
+        formData.append('duration', dur.toString());
         formData.append('type', 'video');
 
         try {
@@ -196,10 +197,9 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             console.log('Video clip uploaded:', result);
 
             if (onRecordingComplete) {
-                onRecordingComplete(blob, duration);
+                onRecordingComplete(blob, dur);
             }
 
-            // Close modal after successful upload
             setTimeout(() => {
                 setIsModalOpen(false);
                 setDuration(0);
@@ -243,22 +243,25 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
                     {hasPermission !== false && (
                         <>
-                            {/* Video Preview */}
-                            <div className="video-preview" style={videoContainerStyle}>
-                                {previewUrl ? (
-                                    <video
-                                        src={previewUrl}
-                                        controls
-                                        style={videoStyle}
-                                    />
-                                ) : (
-                                    <video
-                                        ref={videoRef}
-                                        autoPlay
-                                        muted
-                                        style={videoStyle}
-                                    />
-                                )}
+                            {/* Circular Video Preview */}
+                            <div className="video-preview" style={circularPreviewContainerStyle}>
+                                <div style={circularVideoWrapperStyle}>
+                                    {previewUrl ? (
+                                        <video
+                                            src={previewUrl}
+                                            controls
+                                            style={circularVideoStyle}
+                                        />
+                                    ) : (
+                                        <video
+                                            ref={videoRef}
+                                            autoPlay
+                                            muted
+                                            playsInline
+                                            style={circularVideoStyle}
+                                        />
+                                    )}
+                                </div>
                             </div>
 
                             <div className="duration-display" style={durationStyle}>
@@ -325,7 +328,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     );
 };
 
-// Inline styles
+// Styles
 const modalStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0,
@@ -341,11 +344,11 @@ const modalStyle: React.CSSProperties = {
 
 const contentStyle: React.CSSProperties = {
     backgroundColor: 'white',
-    borderRadius: '8px',
+    borderRadius: '12px',
     padding: '0',
-    minWidth: '480px',
+    width: '360px',
     maxWidth: '90%',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
 };
 
 const headerStyle: React.CSSProperties = {
@@ -353,45 +356,59 @@ const headerStyle: React.CSSProperties = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 20px',
-    borderBottom: '1px solid #ddd',
+    borderBottom: '1px solid #eee',
 };
 
 const closeButtonStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
-    fontSize: '24px',
+    fontSize: '20px',
     cursor: 'pointer',
     color: '#666',
+    padding: '4px',
 };
 
 const bodyStyle: React.CSSProperties = {
     padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
 };
 
 const errorStyle: React.CSSProperties = {
     backgroundColor: '#fee',
     color: '#c00',
     padding: '12px',
-    borderRadius: '4px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    width: '100%',
+    textAlign: 'center',
+};
+
+const circularPreviewContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
     marginBottom: '16px',
 };
 
-const videoContainerStyle: React.CSSProperties = {
-    width: '100%',
-    marginBottom: '16px',
-    borderRadius: '8px',
+const circularVideoWrapperStyle: React.CSSProperties = {
+    width: '240px',
+    height: '240px',
+    borderRadius: '50%',
     overflow: 'hidden',
     backgroundColor: '#000',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
 };
 
-const videoStyle: React.CSSProperties = {
+const circularVideoStyle: React.CSSProperties = {
     width: '100%',
-    height: 'auto',
+    height: '100%',
+    objectFit: 'cover',
     display: 'block',
 };
 
 const durationStyle: React.CSSProperties = {
-    fontSize: '36px',
+    fontSize: '32px',
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: '12px',
@@ -400,8 +417,9 @@ const durationStyle: React.CSSProperties = {
 
 const indicatorStyle: React.CSSProperties = {
     textAlign: 'center',
-    marginBottom: '24px',
-    fontSize: '16px',
+    marginBottom: '20px',
+    fontSize: '14px',
+    color: '#666',
 };
 
 const pulseStyle: React.CSSProperties = {
@@ -411,17 +429,18 @@ const pulseStyle: React.CSSProperties = {
 const controlsStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '10px',
+    width: '100%',
 };
 
 const buttonStyle: React.CSSProperties = {
-    padding: '12px 24px',
-    fontSize: '16px',
+    padding: '12px 20px',
+    fontSize: '14px',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: '500',
-    transition: 'opacity 0.2s',
+    transition: 'all 0.2s',
 };
 
 const recordButtonStyle: React.CSSProperties = {

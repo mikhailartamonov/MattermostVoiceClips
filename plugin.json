@@ -1,7 +1,7 @@
 {
     "id": "com.mattermost.voice-clips",
-    "name": "Voice Clips",
-    "description": "Cross-platform voice messaging plugin for Mattermost that works on desktop, web, iOS and Android",
+    "name": "Voice & Video Clips",
+    "description": "Cross-platform voice and video messaging plugin for Mattermost that works on desktop, web, iOS and Android",
     "homepage_url": "https://github.com/mikhailartamonov/MattermostVoiceClips",
     "support_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/issues",
     "release_notes_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/releases",
