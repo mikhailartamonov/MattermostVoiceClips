@@ -20,13 +20,34 @@ export function isIOS(): boolean {
 }
 
 /**
+ * Detect Firefox browser
+ */
+export function isFirefox(): boolean {
+    return navigator.userAgent.toLowerCase().includes('firefox');
+}
+
+/**
  * Check if pause/resume is supported
  * iOS Safari does not support pause/resume
  */
 export function isPauseResumeSupported(): boolean {
-    return typeof MediaRecorder.prototype.pause === 'function' &&
-           typeof MediaRecorder.prototype.resume === 'function' &&
-           !isIOS(); // iOS Safari doesn't implement pause/resume properly
+    // First check if MediaRecorder exists
+    if (typeof window === 'undefined' || !window.MediaRecorder) {
+        return false;
+    }
+
+    // Check if pause/resume methods exist
+    if (typeof MediaRecorder.prototype.pause !== 'function' ||
+        typeof MediaRecorder.prototype.resume !== 'function') {
+        return false;
+    }
+
+    // iOS Safari doesn't implement pause/resume properly
+    if (isIOS()) {
+        return false;
+    }
+
+    return true;
 }
 
 class MediaRecorderWrapper implements AudioRecorder {
@@ -43,12 +64,19 @@ class MediaRecorderWrapper implements AudioRecorder {
             audioBitsPerSecond: 128000,
         };
 
-        // Only set mimeType if it's not empty
-        if (mimeType) {
+        // Only set mimeType if it's not empty and supported
+        if (mimeType && MediaRecorder.isTypeSupported(mimeType)) {
             options.mimeType = mimeType;
         }
 
-        this.mediaRecorder = new MediaRecorder(stream, options);
+        try {
+            this.mediaRecorder = new MediaRecorder(stream, options);
+        } catch (err) {
+            // If mimeType is not supported, try without it
+            this.mediaRecorder = new MediaRecorder(stream, {
+                audioBitsPerSecond: 128000,
+            });
+        }
 
         this.mediaRecorder.addEventListener('dataavailable', (event) => {
             if (event.data.size > 0) {
@@ -71,7 +99,11 @@ class MediaRecorderWrapper implements AudioRecorder {
     pause(): void {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             if (isPauseResumeSupported()) {
-                this.mediaRecorder.pause();
+                try {
+                    this.mediaRecorder.pause();
+                } catch (err) {
+                    // Pause not supported, ignore
+                }
             }
         }
     }
@@ -79,7 +111,11 @@ class MediaRecorderWrapper implements AudioRecorder {
     resume(): void {
         if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
             if (isPauseResumeSupported()) {
-                this.mediaRecorder.resume();
+                try {
+                    this.mediaRecorder.resume();
+                } catch (err) {
+                    // Resume not supported, ignore
+                }
             }
         }
     }
@@ -93,7 +129,7 @@ class MediaRecorderWrapper implements AudioRecorder {
 
             this.mediaRecorder.addEventListener('stop', () => {
                 const blob = new Blob(this.audioChunks, {
-                    type: this.mediaRecorder!.mimeType || this.mimeType,
+                    type: this.mediaRecorder!.mimeType || this.mimeType || 'audio/webm',
                 });
 
                 // Stop all tracks
@@ -127,9 +163,14 @@ class MediaRecorderWrapper implements AudioRecorder {
 
 /**
  * Get supported audio MIME type
- * iOS Safari requires MP4/AAC, others prefer WebM/Opus
+ * iOS Safari requires MP4/AAC, Firefox prefers OGG, others prefer WebM/Opus
  */
 function getSupportedMimeType(): string {
+    // Check if MediaRecorder exists
+    if (typeof window === 'undefined' || !window.MediaRecorder) {
+        return '';
+    }
+
     // iOS Safari needs MP4/AAC
     if (isIOS()) {
         const iOSTypes = [
@@ -146,11 +187,28 @@ function getSupportedMimeType(): string {
         return ''; // Let browser choose default
     }
 
-    // Non-iOS browsers prefer WebM/Opus
+    // Firefox (especially on Linux) works better with OGG/Opus
+    if (isFirefox()) {
+        const firefoxTypes = [
+            'audio/ogg;codecs=opus',
+            'audio/ogg',
+            'audio/webm;codecs=opus',
+            'audio/webm',
+        ];
+
+        for (const type of firefoxTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+    }
+
+    // Chrome/Edge and other browsers prefer WebM/Opus
     const types = [
         'audio/webm;codecs=opus',
         'audio/webm',
         'audio/ogg;codecs=opus',
+        'audio/ogg',
         'audio/mp4',
         'audio/mpeg',
     ];
@@ -170,6 +228,7 @@ function getSupportedMimeType(): string {
  */
 export function isAudioRecordingSupported(): boolean {
     return !!(
+        typeof window !== 'undefined' &&
         navigator.mediaDevices &&
         navigator.mediaDevices.getUserMedia &&
         window.MediaRecorder
@@ -208,9 +267,14 @@ export async function getAudioRecorder(): Promise<AudioRecorder> {
 
 /**
  * Get supported video MIME type
- * iOS Safari requires MP4/H264, others prefer WebM/VP9
+ * iOS Safari requires MP4/H264, Firefox prefers VP8, others prefer VP9
  */
 export function getVideoMimeType(): string {
+    // Check if MediaRecorder exists
+    if (typeof window === 'undefined' || !window.MediaRecorder) {
+        return '';
+    }
+
     // iOS Safari needs H.264 + AAC
     if (isIOS()) {
         const iOSTypes = [
@@ -223,10 +287,26 @@ export function getVideoMimeType(): string {
                 return type;
             }
         }
-        return 'video/mp4'; // Fallback
+        return ''; // Let browser choose - don't return unsupported type
     }
 
-    // Non-iOS browsers
+    // Firefox (especially on Linux) may have issues with VP9
+    if (isFirefox()) {
+        const firefoxTypes = [
+            'video/webm;codecs=vp8,opus',
+            'video/webm;codecs=vp8,vorbis',
+            'video/webm;codecs=vp9,opus',
+            'video/webm',
+        ];
+
+        for (const type of firefoxTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+    }
+
+    // Chrome/Edge and other browsers
     const types = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
@@ -242,13 +322,18 @@ export function getVideoMimeType(): string {
         }
     }
 
-    return 'video/webm'; // Fallback
+    // Return empty string - don't return unsupported hardcoded type
+    return '';
 }
 
 /**
  * Convert MIME type to file extension
  */
 export function getFileExtensionForMimeType(mimeType: string): string {
+    if (!mimeType) {
+        return '.webm'; // Safe default for empty mimeType
+    }
+
     if (mimeType.includes('webm')) {
         return '.webm';
     } else if (mimeType.includes('ogg')) {
@@ -260,5 +345,6 @@ export function getFileExtensionForMimeType(mimeType: string): string {
     } else if (mimeType.includes('aac')) {
         return '.aac';
     }
-    return '.webm'; // default
+
+    return '.webm'; // Default fallback
 }
