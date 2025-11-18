@@ -1,6 +1,7 @@
 import React, {useEffect, useState, useRef} from 'react';
 import {getAudioRecorder, isPauseResumeSupported, getFileExtensionForMimeType} from '../utils/audio_recorder';
 import {fetchPluginConfig, getAudioBitrate, getMaxAudioDuration} from '../utils/config_service';
+import {t} from '../i18n/translations';
 
 interface VoiceRecorderButtonProps {
     channelId?: string;
@@ -54,7 +55,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             return true;
         } catch (err) {
             setHasPermission(false);
-            setErrorMessage('Microphone permission denied. Please allow microphone access to record voice messages.');
+            setErrorMessage(t('microphonePermissionDenied'));
             return false;
         }
     };
@@ -80,7 +81,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 setDuration((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            setErrorMessage('Failed to start recording. Please try again.');
+            setErrorMessage(t('failedToStartRecording'));
         }
     };
 
@@ -169,7 +170,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 onRecordingComplete(blob, dur);
             }
         } catch (err) {
-            setErrorMessage('Failed to upload voice clip. Please try again.');
+            setErrorMessage(t('failedToUploadVoice'));
         }
     };
 
@@ -193,7 +194,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
         <div className="voice-recorder-modal" style={modalStyle}>
             <div className="voice-recorder-content" style={contentStyle}>
                 <div className="voice-recorder-header" style={headerStyle}>
-                    <h3>🎤 Record Voice Message</h3>
+                    <h3>{t('recordVoiceMessage')}</h3>
                     <button onClick={cancelRecording} style={closeButtonStyle}>✕</button>
                 </div>
 
@@ -212,20 +213,20 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
 
                             <div className="recording-indicator" style={indicatorStyle}>
                                 {isRecording && !isPaused && (
-                                    <span className="recording-pulse" style={pulseStyle}>⏺</span>
+                                    <span className="recording-pulse" style={pulseStyle}>⏺ {t('recording')}</span>
                                 )}
                                 {isRecording && isPaused && (
-                                    <span>⏸ Paused</span>
+                                    <span>⏸ {t('paused')}</span>
                                 )}
                                 {!isRecording && (
-                                    <span>Ready to record</span>
+                                    <span>{t('readyToRecord')}</span>
                                 )}
                             </div>
 
                             <div className="controls" style={controlsStyle}>
                                 {!isRecording && (
                                     <button onClick={startRecording} style={{...buttonStyle, ...recordButtonStyle}}>
-                                        🎤 Start Recording
+                                        🎤 {t('startRecording')}
                                     </button>
                                 )}
 
@@ -233,11 +234,11 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                                     <>
                                         {isPauseResumeSupported() && (
                                             <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
-                                                ⏸ Pause
+                                                ⏸ {t('pause')}
                                             </button>
                                         )}
                                         <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
-                                            ⏹ Stop & Send
+                                            ⏹ {t('stopAndSend')}
                                         </button>
                                     </>
                                 )}
@@ -245,17 +246,17 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                                 {isRecording && isPaused && isPauseResumeSupported() && (
                                     <>
                                         <button onClick={resumeRecording} style={{...buttonStyle, ...resumeButtonStyle}}>
-                                            ▶️ Resume
+                                            ▶️ {t('resume')}
                                         </button>
                                         <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
-                                            ⏹ Stop & Send
+                                            ⏹ {t('stopAndSend')}
                                         </button>
                                     </>
                                 )}
 
                                 {isRecording && (
                                     <button onClick={cancelRecording} style={{...buttonStyle, ...cancelButtonStyle}}>
-                                        🗑 Cancel
+                                        🗑 {t('cancel')}
                                     </button>
                                 )}
                             </div>

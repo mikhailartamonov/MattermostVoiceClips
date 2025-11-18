@@ -1,227 +1,171 @@
 # Mattermost Voice & Video Clips
 
-Плагин для голосовых и видео сообщений в Mattermost с полной поддержкой всех платформ: веб, десктоп, iOS и Android.
+Cross-platform voice and video messaging plugin for Mattermost with full support for web, desktop, iOS and Android.
 
-## 🎯 Особенности
+## Features
 
-### Голосовые сообщения 🎤
-- ✅ **Кросс-платформенность**: Работает на веб, десктопе, iOS (Safari 14.3+) и Android (Chrome)
-- 🎤 **Простая запись**: Интуитивный интерфейс записи голосовых сообщений
-- ⏸️ **Пауза/возобновление**: Возможность приостановить и продолжить запись
-- 🎵 **Оптимальное качество**: Использует WebM (Opus codec) для лучшего баланса качества и размера
-- 🎨 **Визуализация**: Отображение звуковой волны (waveform) при воспроизведении
-- 🎮 **Умный плеер**: Контроль скорости воспроизведения (1x, 1.25x, 1.5x, 2x), перемотка
-- ⚡ **Slash-команда**: Быстрый вызов записи через `/voice`
+### Voice Messages
+- **Cross-platform**: Works on web, desktop, iOS (Safari 14.3+) and Android (Chrome)
+- **Easy recording**: Intuitive recording interface with pause/resume
+- **Quality audio**: Uses WebM (Opus codec) for optimal quality and size
+- **Waveform visualization**: Audio waveform display during playback
+- **Smart player**: Speed control (1x, 1.25x, 1.5x, 2x), seeking
+- **Slash command**: Quick access via `/voice`
 
-### Видео сообщения 📹
-- 📹 **Видео запись**: Запись видео с веб-камеры с превью в реальном времени
-- 🎥 **Качественное видео**: VP9 codec для отличного качества при малом размере
-- 📱 **Мобильная поддержка**: Работает на всех мобильных устройствах
-- ⏸️ **Управление записью**: Пауза, возобновление, отмена
-- ⚡ **Slash-команда**: Быстрый вызов записи через `/video`
+### Video Messages
+- **Video recording**: Camera recording with real-time circular preview (Telegram-style)
+- **High quality**: VP9/VP8 codec for excellent quality at small file sizes
+- **Mobile support**: Works on all mobile devices
+- **Recording controls**: Pause, resume, cancel
+- **Slash command**: Quick access via `/video`
 
-### Общие функции
-- 📱 **Мобильная адаптация**: Полностью адаптированный интерфейс для мобильных устройств
-- 🔒 **Безопасность**: Корректный запрос разрешений на камеру и микрофон
-- 🛡️ **Валидация**: Проверка типа файла, размера (до 50 МБ аудио, 100 МБ видео), прав доступа
+### General
+- **Mobile-first design**: Fully responsive interface for mobile devices
+- **Security**: Proper permission requests for camera and microphone
+- **Validation**: File type, size (up to 50 MB audio, 100 MB video), permissions
+- **Internationalization**: 12 languages supported (auto-detects system language)
+- **Notifications**: Custom notification sounds for incoming voice/video messages
 
-## 🔄 Отличия от mattermost-plugin-voice
+## Why This Plugin?
 
-Существующий плагин [mattermost-plugin-voice](https://github.com/streamer45/mattermost-plugin-voice) имеет критическое ограничение: он работает только на веб-клиенте и десктопном приложении, но **не поддерживает мобильные устройства**.
+The existing [mattermost-plugin-voice](https://github.com/streamer45/mattermost-plugin-voice) has a critical limitation: it only works on web and desktop clients, with **no mobile device support**.
 
-**Voice Clips** решает эту проблему, используя современный MediaRecorder API, который поддерживается во всех мобильных браузерах:
+**Voice & Video Clips** solves this by using the modern MediaRecorder API, supported in all mobile browsers:
 - iOS Safari 14.3+
 - Android Chrome
-- Мобильные приложения Mattermost (через WebView)
+- Mattermost mobile apps (via WebView)
 
-## 📋 Требования
+## Requirements
 
-- Mattermost Server 7.1.0 или выше
-- Go 1.21 или выше (для сборки)
-- Node.js 20.11 или выше (для сборки)
-- npm 10.x или выше (для сборки)
+- Mattermost Server 7.1.0 or higher
+- Go 1.19+ (for building)
+- Node.js 18+ (for building)
 
-## 🚀 Установка
+## Installation
 
-### Из предсобранного пакета
+### From Pre-built Package
 
-1. Скачайте последний релиз из раздела [Releases](https://github.com/mikhailartamonov/MattermostVoiceClips/releases)
-2. В Mattermost перейдите в **System Console** → **Plugins** → **Plugin Management**
-3. Нажмите **Upload Plugin** и выберите скачанный `.tar.gz` файл
-4. Активируйте плагин
+1. Download the latest release from [Releases](https://github.com/mikhailartamonov/MattermostVoiceClips/releases)
+2. In Mattermost, go to **System Console** > **Plugins** > **Plugin Management**
+3. Click **Upload Plugin** and select the downloaded `.tar.gz` file
+4. Enable the plugin
 
-### Сборка из исходников
+### Building from Source
 
 ```bash
-# Клонируйте репозиторий
 git clone https://github.com/mikhailartamonov/MattermostVoiceClips.git
 cd MattermostVoiceClips
-
-# Установите зависимости и соберите плагин
 make dist
-
-# Плагин будет создан в dist/com.mattermost.voice-clips-0.1.0.tar.gz
+# Plugin will be created at dist/com.mattermost.voice-clips-X.X.X.tar.gz
 ```
 
-### Развертывание на локальном сервере
+## Usage
 
-Для автоматической установки на локальный сервер Mattermost:
+### Recording Voice Messages
+
+1. Click the microphone icon in the channel header
+2. Allow microphone access (first time only)
+3. Click **Start Recording**
+4. Use controls: Pause, Resume, Stop & Send, Cancel
+
+Or use the slash command: `/voice`
+
+### Recording Video Messages
+
+1. Click the video icon in the channel header
+2. Allow camera and microphone access (first time only)
+3. Click **Start Recording**
+4. Use controls: Pause, Resume, Stop & Send, Cancel
+
+Or use the slash command: `/video`
+
+### Playback
+
+- Play/pause controls
+- Waveform visualization (audio)
+- Circular video display
+- Seek by clicking on progress bar
+- Playback speed control (1x, 1.25x, 1.5x, 2x)
+
+## Configuration
+
+Configure in **System Console** > **Plugins** > **Voice & Video Clips**:
+
+- **Audio duration**: Max recording length (default: 5 minutes)
+- **Video duration**: Max recording length (default: 2 minutes)
+- **File sizes**: Max upload sizes (default: 50 MB audio, 100 MB video)
+- **Bitrates**: Audio (64-256 kbps), Video (500-4000 kbps)
+- **Formats**: Allowed file formats
+- **Waveform**: Enable/disable visualization
+
+See [Configuration Guide](doc/CONFIGURATION.md) for details.
+
+## Browser Support
+
+| Platform | Browser | Support |
+|----------|---------|---------|
+| Desktop | Chrome/Edge | Full |
+| Desktop | Firefox | Full |
+| Desktop | Safari | Full |
+| iOS | Safari 14.3+ | Full |
+| Android | Chrome | Full |
+| Mobile App | WebView | Full |
+
+## Documentation
+
+- [Installation Guide](doc/INSTALLATION.md)
+- [Configuration Guide](doc/CONFIGURATION.md)
+- [Architecture Overview](doc/ARCHITECTURE.md)
+- [Development Guide](doc/DEVELOPMENT.md)
+- [API Reference](doc/API.md)
+
+## Supported Languages
+
+The plugin automatically detects your system language:
+
+- English, Russian, German, French, Spanish, Portuguese
+- Chinese, Japanese, Korean, Italian, Dutch, Polish
+
+## Development
 
 ```bash
-# Установите переменные окружения
-export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
-export MM_ADMIN_TOKEN=your-admin-token
+# Install dependencies
+cd webapp && npm install
 
-# Разверните плагин
-make deploy
-```
-
-## 📖 Использование
-
-### Запись голосового сообщения
-
-1. В любом канале нажмите на кнопку микрофона 🎤 в заголовке канала
-2. Разрешите доступ к микрофону (при первом использовании)
-3. Нажмите **Start Recording** для начала записи
-4. Используйте кнопки:
-   - ⏸️ **Pause** - приостановить запись
-   - ▶️ **Resume** - продолжить запись
-   - ⏹️ **Stop & Send** - остановить и отправить сообщение
-   - 🗑️ **Cancel** - отменить запись
-
-### Использование slash-команды
-
-Вы также можете быстро открыть рекордер, используя команду:
-```
-/voice
-```
-
-Это откроет окно записи голосового сообщения автоматически.
-
-### На мобильных устройствах
-
-На iOS и Android интерфейс работает точно так же, как на десктопе. При первом использовании браузер запросит разрешение на доступ к микрофону.
-
-### Воспроизведение голосовых сообщений
-
-Отправленные голосовые сообщения отображаются в виде красивого плеера с функциями:
-- ▶️ Воспроизведение/пауза
-- 📊 Визуализация звуковой волны
-- ⏩ Перемотка по клику на прогресс-баре
-- 🔢 Изменение скорости воспроизведения (1x, 1.25x, 1.5x, 2x)
-
-## ⚙️ Настройка
-
-В **System Console** → **Plugins** → **Voice Clips** доступны следующие настройки:
-
-- **Maximum Recording Duration** (по умолчанию: 300 секунд / 5 минут)
-  - Максимальная длительность записи голосового сообщения
-
-- **Audio Format** (по умолчанию: WebM)
-  - WebM (Opus codec) - лучший вариант для веб и мобильных устройств
-  - MP4 (AAC codec) - универсальная совместимость
-
-- **Enable Waveform Visualization** (по умолчанию: включено)
-  - Показывать визуализацию аудио волны при воспроизведении
-
-## 🛠️ Разработка
-
-### Структура проекта
-
-```
-MattermostVoiceClips/
-├── server/              # Серверная часть (Go)
-│   ├── plugin.go       # Основная логика плагина
-│   ├── configuration.go # Конфигурация
-│   └── main.go         # Точка входа
-├── webapp/              # Веб-интерфейс (React/TypeScript)
-│   ├── src/
-│   │   ├── components/ # React компоненты
-│   │   ├── utils/      # Утилиты (включая MediaRecorder)
-│   │   └── index.tsx   # Точка входа
-│   └── package.json
-├── assets/              # Ресурсы (иконки и т.д.)
-├── plugin.json         # Манифест плагина
-└── Makefile            # Система сборки
-```
-
-### Команды для разработки
-
-```bash
-# Установить все зависимости
-make deps
-
-# Собрать только серверную часть
-make server
-
-# Собрать только веб-часть
-make webapp
-
-# Собрать весь плагин
+# Build plugin
 make dist
 
-# Запустить в режиме разработки (автоматическая пересборка webapp)
+# Watch mode (auto-rebuild)
 make watch
 
-# Запустить тесты
-make test
-
-# Очистить артефакты сборки
-make clean
+# Run tests
+cd server && go test -v ./...
 ```
 
-## 🔧 Технические детали
+See [Development Guide](doc/DEVELOPMENT.md) for more details.
 
-### Почему это работает на мобильных устройствах?
+## Known Issues
 
-Ключевое отличие от старого плагина - использование **MediaRecorder API**:
+- iOS Safari may require user interaction before first microphone permission request
+- Old browsers (< 2020) may not support MediaRecorder API
 
-- ✅ Поддерживается в iOS Safari 14.3+ (с WebM/Opus)
-- ✅ Поддерживается в Android Chrome (с WebM/Opus)
-- ✅ Работает в WebView мобильных приложений Mattermost
-- ✅ Не требует нативных расширений или специальных API
+## License
 
-### Совместимость браузеров
+MIT License - see [LICENSE](LICENSE)
 
-| Платформа | Браузер | Поддержка |
-|-----------|---------|-----------|
-| Desktop | Chrome/Edge | ✅ |
-| Desktop | Firefox | ✅ |
-| Desktop | Safari | ✅ |
-| iOS | Safari 14.3+ | ✅ |
-| Android | Chrome | ✅ |
-| Mattermost Mobile App | WebView | ✅ |
+## Contributing
 
-### Формат аудио
+Pull requests welcome! For major changes, please open an issue first to discuss.
 
-По умолчанию используется **WebM с кодеком Opus**:
-- Отличное качество при небольшом размере
-- Битрейт: 128 kbps
-- Поддержка подавления шума и эхоподавления
-- Универсальная поддержка в современных браузерах
+## Support
 
-## 🐛 Известные проблемы
+If you have issues or questions:
+1. Check [Issues](https://github.com/mikhailartamonov/MattermostVoiceClips/issues)
+2. Create a new issue with description
+3. Include Mattermost version, browser, and OS
 
-- На iOS Safari может потребоваться взаимодействие пользователя перед первым запросом разрешения на микрофон
-- Старые версии браузеров (< 2020 года) могут не поддерживать MediaRecorder API
+## Acknowledgments
 
-## 📝 Лицензия
-
-MIT License - см. файл [LICENSE](LICENSE)
-
-## 🤝 Вклад в проект
-
-Приветствуются pull requests! Для крупных изменений сначала откройте issue для обсуждения.
-
-## 📧 Поддержка
-
-Если у вас возникли проблемы или вопросы:
-1. Проверьте [Issues](https://github.com/mikhailartamonov/MattermostVoiceClips/issues)
-2. Создайте новый issue с описанием проблемы
-3. Укажите версию Mattermost, браузер и ОС
-
-## 🙏 Благодарности
-
-- [mattermost-plugin-voice](https://github.com/streamer45/mattermost-plugin-voice) - за вдохновение
-- [mattermost-plugin-calls](https://github.com/mattermost/mattermost-plugin-calls) - за примеры кросс-платформенной реализации
-- Сообщество Mattermost за отличную документацию по разработке плагинов
+- [mattermost-plugin-voice](https://github.com/streamer45/mattermost-plugin-voice) - for inspiration
+- [mattermost-plugin-calls](https://github.com/mattermost/mattermost-plugin-calls) - for cross-platform examples
+- Mattermost community for excellent plugin development documentation

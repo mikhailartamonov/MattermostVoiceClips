@@ -4,6 +4,8 @@ import VoiceRecorderButton from './components/voice_recorder_button';
 import VoiceClipPlayer from './components/voice_clip_player';
 import VideoRecorderButton from './components/video_recorder_button';
 import VideoClipPlayer from './components/video_clip_player';
+import {initializeLanguage, t} from './i18n/translations';
+import {playVoiceMessageSound, playVideoMessageSound} from './utils/notification_sound';
 
 // PluginRegistry is injected by Mattermost
 interface PluginRegistry {
@@ -28,6 +30,9 @@ const RecordersRoot: React.FC = () => (
 
 class Plugin {
     public async initialize(registry: PluginRegistry, store: Store) {
+        // Initialize i18n with system language
+        initializeLanguage();
+
         // Register voice recorder button in channel header
         registry.registerChannelHeaderButtonAction(
             <i className="icon icon-microphone" style={{fontSize: '18px'}} />,
@@ -35,8 +40,8 @@ class Plugin {
                 const event = new CustomEvent('open-voice-recorder');
                 window.dispatchEvent(event);
             },
-            'Voice Message',
-            'Record a voice message'
+            t('voiceMessage'),
+            t('recordVoiceMessage')
         );
 
         // Register video recorder button in channel header
@@ -46,8 +51,33 @@ class Plugin {
                 const event = new CustomEvent('open-video-recorder');
                 window.dispatchEvent(event);
             },
-            'Video Message',
-            'Record a video message'
+            t('videoMessage'),
+            t('recordVideoMessage')
+        );
+
+        // Listen for new posts to play notification sounds
+        registry.registerWebSocketEventHandler(
+            'posted',
+            (msg: any) => {
+                try {
+                    const post = JSON.parse(msg.data.post);
+                    const currentUserId = store.getState().entities.users.currentUserId;
+
+                    // Don't play sound for own messages
+                    if (post.user_id === currentUserId) {
+                        return;
+                    }
+
+                    // Play appropriate notification sound
+                    if (post.type === 'custom_voice_clip') {
+                        playVoiceMessageSound();
+                    } else if (post.type === 'custom_video_clip') {
+                        playVideoMessageSound();
+                    }
+                } catch (err) {
+                    // Ignore parsing errors
+                }
+            }
         );
 
         // Register custom post types

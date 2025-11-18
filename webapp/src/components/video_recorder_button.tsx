@@ -1,6 +1,7 @@
 import React, {useEffect, useState, useRef} from 'react';
 import {isIOS, isPauseResumeSupported, getVideoMimeType, getFileExtensionForMimeType} from '../utils/audio_recorder';
 import {fetchPluginConfig, getVideoBitrate, getMaxVideoDuration} from '../utils/config_service';
+import {t} from '../i18n/translations';
 
 interface VideoRecorderButtonProps {
     channelId?: string;
@@ -91,7 +92,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             return true;
         } catch (err) {
             setHasPermission(false);
-            setErrorMessage('Camera/microphone permission denied. Please allow access to record video messages.');
+            setErrorMessage(t('cameraPermissionDenied'));
             return false;
         }
     };
@@ -145,7 +146,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setDuration((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            setErrorMessage('Failed to start recording. Please try again.');
+            setErrorMessage(t('failedToStartRecording'));
         }
     };
 
@@ -242,7 +243,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setPreviewUrl('');
             }, 1000);
         } catch (err) {
-            setErrorMessage('Failed to upload video clip. Please try again.');
+            setErrorMessage(t('failedToUploadVideo'));
         }
     };
 
@@ -265,7 +266,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         <div className="video-recorder-modal" style={modalStyle}>
             <div className="video-recorder-content" style={contentStyle}>
                 <div className="video-recorder-header" style={headerStyle}>
-                    <h3>📹 Record Video Message</h3>
+                    <h3>{t('recordVideoMessage')}</h3>
                     <button onClick={cancelRecording} style={closeButtonStyle}>✕</button>
                 </div>
 
@@ -305,16 +306,16 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
                             <div className="recording-indicator" style={indicatorStyle}>
                                 {isRecording && !isPaused && (
-                                    <span className="recording-pulse" style={pulseStyle}>⏺ Recording...</span>
+                                    <span className="recording-pulse" style={pulseStyle}>⏺ {t('recording')}...</span>
                                 )}
                                 {isRecording && isPaused && (
-                                    <span>⏸ Paused</span>
+                                    <span>⏸ {t('paused')}</span>
                                 )}
                                 {!isRecording && !previewUrl && (
-                                    <span>Ready to record</span>
+                                    <span>{t('readyToRecord')}</span>
                                 )}
                                 {previewUrl && (
-                                    <span>✅ Recording completed</span>
+                                    <span>✅ {t('recordingCompleted')}</span>
                                 )}
                             </div>
 
@@ -322,7 +323,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                                 <div className="controls" style={controlsStyle}>
                                     {!isRecording && (
                                         <button onClick={startRecording} style={{...buttonStyle, ...recordButtonStyle}}>
-                                            📹 Start Recording
+                                            📹 {t('startRecording')}
                                         </button>
                                     )}
 
@@ -330,11 +331,11 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                                         <>
                                             {isPauseResumeSupported() && (
                                                 <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
-                                                    ⏸ Pause
+                                                    ⏸ {t('pause')}
                                                 </button>
                                             )}
                                             <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
-                                                ⏹ Stop & Send
+                                                ⏹ {t('stopAndSend')}
                                             </button>
                                         </>
                                     )}
@@ -342,17 +343,17 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                                     {isRecording && isPaused && isPauseResumeSupported() && (
                                         <>
                                             <button onClick={resumeRecording} style={{...buttonStyle, ...resumeButtonStyle}}>
-                                                ▶️ Resume
+                                                ▶️ {t('resume')}
                                             </button>
                                             <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
-                                                ⏹ Stop & Send
+                                                ⏹ {t('stopAndSend')}
                                             </button>
                                         </>
                                     )}
 
                                     {isRecording && (
                                         <button onClick={cancelRecording} style={{...buttonStyle, ...cancelButtonStyle}}>
-                                            🗑 Cancel
+                                            🗑 {t('cancel')}
                                         </button>
                                     )}
                                 </div>
