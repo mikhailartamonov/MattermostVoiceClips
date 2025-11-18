@@ -80,6 +80,27 @@ class Plugin {
                 window.dispatchEvent(customEvent);
             }
         );
+
+        // Also listen for non-prefixed events (for compatibility)
+        registry.registerWebSocketEventHandler(
+            'open_voice_recorder',
+            (event: any) => {
+                const customEvent = new CustomEvent('open-voice-recorder', {
+                    detail: event.data,
+                });
+                window.dispatchEvent(customEvent);
+            }
+        );
+
+        registry.registerWebSocketEventHandler(
+            'open_video_recorder',
+            (event: any) => {
+                const customEvent = new CustomEvent('open-video-recorder', {
+                    detail: event.data,
+                });
+                window.dispatchEvent(customEvent);
+            }
+        );
     }
 
     public uninitialize() {

@@ -144,11 +144,9 @@ export async function getAudioRecorder(): Promise<AudioRecorder> {
         });
 
         const mimeType = getSupportedMimeType();
-        console.log('Using MIME type for recording:', mimeType);
 
         return new MediaRecorderWrapper(stream, mimeType);
     } catch (err) {
-        console.error('Error accessing microphone:', err);
         throw new Error('Failed to access microphone. Please check permissions.');
     }
 }

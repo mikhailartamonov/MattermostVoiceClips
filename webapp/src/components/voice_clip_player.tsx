@@ -3,10 +3,9 @@ import WaveformVisualizer from './waveform_visualizer';
 
 interface VoiceClipPlayerProps {
     post: any;
-    fileInfo?: any;
 }
 
-const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post, fileInfo}) => {
+const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post}) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -40,8 +39,7 @@ const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post, fileInfo}) => {
             setCurrentTime(0);
         };
 
-        const handleError = (e: Event) => {
-            console.error('Error playing audio:', e);
+        const handleError = () => {
             setIsPlaying(false);
         };
 
@@ -65,8 +63,8 @@ const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post, fileInfo}) => {
         if (isPlaying) {
             audio.pause();
         } else {
-            audio.play().catch((err) => {
-                console.error('Error playing audio:', err);
+            audio.play().catch(() => {
+                // Playback failed - likely autoplay policy
             });
         }
         setIsPlaying(!isPlaying);

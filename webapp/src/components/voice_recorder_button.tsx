@@ -41,7 +41,6 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             setErrorMessage('');
             return true;
         } catch (err) {
-            console.error('Error requesting microphone permission:', err);
             setHasPermission(false);
             setErrorMessage('Microphone permission denied. Please allow microphone access to record voice messages.');
             return false;
@@ -67,7 +66,6 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 setDuration((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            console.error('Error starting recording:', err);
             setErrorMessage('Failed to start recording. Please try again.');
         }
     };
@@ -148,14 +146,12 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 throw new Error('Upload failed');
             }
 
-            const result = await response.json();
-            console.log('Voice clip uploaded:', result);
+            await response.json();
 
             if (onRecordingComplete) {
                 onRecordingComplete(blob, duration);
             }
         } catch (err) {
-            console.error('Error uploading voice clip:', err);
             setErrorMessage('Failed to upload voice clip. Please try again.');
         }
     };

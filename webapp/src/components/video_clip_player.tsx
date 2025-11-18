@@ -2,7 +2,6 @@ import React, {useEffect, useState, useRef} from 'react';
 
 interface VideoClipPlayerProps {
     post: any;
-    fileInfo?: any;
 }
 
 const VideoClipPlayer: React.FC<VideoClipPlayerProps> = ({post}) => {
@@ -69,8 +68,8 @@ const VideoClipPlayer: React.FC<VideoClipPlayerProps> = ({post}) => {
         if (isPlaying) {
             video.pause();
         } else {
-            video.play().catch((err) => {
-                console.error('Error playing video:', err);
+            video.play().catch(() => {
+                // Playback failed - likely autoplay policy
             });
         }
     };
