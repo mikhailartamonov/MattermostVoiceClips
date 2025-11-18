@@ -1,5 +1,5 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {getAudioRecorder} from '../utils/audio_recorder';
+import {getAudioRecorder, isPauseResumeSupported, getFileExtensionForMimeType} from '../utils/audio_recorder';
 
 interface VoiceRecorderButtonProps {
     channelId?: string;
@@ -71,7 +71,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
     };
 
     const pauseRecording = () => {
-        if (recorderRef.current && isRecording) {
+        if (recorderRef.current && isRecording && isPauseResumeSupported()) {
             recorderRef.current.pause();
             setIsPaused(true);
             if (timerRef.current) {
@@ -81,7 +81,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
     };
 
     const resumeRecording = () => {
-        if (recorderRef.current && isPaused) {
+        if (recorderRef.current && isPaused && isPauseResumeSupported()) {
             recorderRef.current.resume();
             setIsPaused(false);
 
@@ -94,6 +94,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
 
     const stopRecording = async () => {
         if (recorderRef.current) {
+            const mimeType = recorderRef.current.getMimeType();
             const audioBlob = await recorderRef.current.stop();
 
             if (timerRef.current) {
@@ -103,8 +104,8 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             setIsRecording(false);
             setIsPaused(false);
 
-            // Upload the audio
-            await uploadAudio(audioBlob, duration);
+            // Upload the audio with correct file extension
+            await uploadAudio(audioBlob, duration, mimeType);
 
             // Reset state
             setDuration(0);
@@ -127,13 +128,15 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
         setIsModalOpen(false);
     };
 
-    const uploadAudio = async (blob: Blob, duration: number) => {
+    const uploadAudio = async (blob: Blob, dur: number, mimeType: string) => {
         const formData = new FormData();
         const currentChannelId = channelId || getCurrentChannelId();
 
-        formData.append('audio', blob, `voice_clip_${Date.now()}.webm`);
+        // Use correct file extension based on actual mime type
+        const extension = getFileExtensionForMimeType(mimeType);
+        formData.append('audio', blob, `voice_clip_${Date.now()}${extension}`);
         formData.append('channel_id', currentChannelId);
-        formData.append('duration', duration.toString());
+        formData.append('duration', dur.toString());
 
         try {
             const response = await fetch('/plugins/com.mattermost.voice-clips/api/v1/upload', {
@@ -149,7 +152,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             await response.json();
 
             if (onRecordingComplete) {
-                onRecordingComplete(blob, duration);
+                onRecordingComplete(blob, dur);
             }
         } catch (err) {
             setErrorMessage('Failed to upload voice clip. Please try again.');
@@ -214,16 +217,18 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
 
                                 {isRecording && !isPaused && (
                                     <>
-                                        <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
-                                            ⏸ Pause
-                                        </button>
+                                        {isPauseResumeSupported() && (
+                                            <button onClick={pauseRecording} style={{...buttonStyle, ...pauseButtonStyle}}>
+                                                ⏸ Pause
+                                            </button>
+                                        )}
                                         <button onClick={stopRecording} style={{...buttonStyle, ...stopButtonStyle}}>
                                             ⏹ Stop & Send
                                         </button>
                                     </>
                                 )}
 
-                                {isRecording && isPaused && (
+                                {isRecording && isPaused && isPauseResumeSupported() && (
                                     <>
                                         <button onClick={resumeRecording} style={{...buttonStyle, ...resumeButtonStyle}}>
                                             ▶️ Resume

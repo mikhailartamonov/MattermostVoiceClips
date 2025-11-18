@@ -9,25 +9,56 @@ interface AudioRecorder {
     resume: () => void;
     stop: () => Promise<Blob>;
     cancel: () => void;
+    getMimeType: () => string;
+}
+
+/**
+ * Detect iOS Safari
+ */
+export function isIOS(): boolean {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+}
+
+/**
+ * Check if pause/resume is supported
+ * iOS Safari does not support pause/resume
+ */
+export function isPauseResumeSupported(): boolean {
+    return typeof MediaRecorder.prototype.pause === 'function' &&
+           typeof MediaRecorder.prototype.resume === 'function' &&
+           !isIOS(); // iOS Safari doesn't implement pause/resume properly
 }
 
 class MediaRecorderWrapper implements AudioRecorder {
     private mediaRecorder: MediaRecorder | null = null;
     private audioChunks: Blob[] = [];
     private stream: MediaStream | null = null;
+    private mimeType: string;
 
     constructor(stream: MediaStream, mimeType: string) {
         this.stream = stream;
-        this.mediaRecorder = new MediaRecorder(stream, {
-            mimeType,
+        this.mimeType = mimeType;
+
+        const options: MediaRecorderOptions = {
             audioBitsPerSecond: 128000,
-        });
+        };
+
+        // Only set mimeType if it's not empty
+        if (mimeType) {
+            options.mimeType = mimeType;
+        }
+
+        this.mediaRecorder = new MediaRecorder(stream, options);
 
         this.mediaRecorder.addEventListener('dataavailable', (event) => {
             if (event.data.size > 0) {
                 this.audioChunks.push(event.data);
             }
         });
+    }
+
+    getMimeType(): string {
+        return this.mediaRecorder?.mimeType || this.mimeType;
     }
 
     start(): void {
@@ -39,13 +70,17 @@ class MediaRecorderWrapper implements AudioRecorder {
 
     pause(): void {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            this.mediaRecorder.pause();
+            if (isPauseResumeSupported()) {
+                this.mediaRecorder.pause();
+            }
         }
     }
 
     resume(): void {
         if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
-            this.mediaRecorder.resume();
+            if (isPauseResumeSupported()) {
+                this.mediaRecorder.resume();
+            }
         }
     }
 
@@ -58,7 +93,7 @@ class MediaRecorderWrapper implements AudioRecorder {
 
             this.mediaRecorder.addEventListener('stop', () => {
                 const blob = new Blob(this.audioChunks, {
-                    type: this.mediaRecorder!.mimeType,
+                    type: this.mediaRecorder!.mimeType || this.mimeType,
                 });
 
                 // Stop all tracks
@@ -92,9 +127,26 @@ class MediaRecorderWrapper implements AudioRecorder {
 
 /**
  * Get supported audio MIME type
- * Priority: webm > ogg > mp4
+ * iOS Safari requires MP4/AAC, others prefer WebM/Opus
  */
 function getSupportedMimeType(): string {
+    // iOS Safari needs MP4/AAC
+    if (isIOS()) {
+        const iOSTypes = [
+            'audio/mp4',
+            'audio/aac',
+            'audio/mpeg',
+        ];
+
+        for (const type of iOSTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+        return ''; // Let browser choose default
+    }
+
+    // Non-iOS browsers prefer WebM/Opus
     const types = [
         'audio/webm;codecs=opus',
         'audio/webm',
@@ -134,15 +186,18 @@ export async function getAudioRecorder(): Promise<AudioRecorder> {
     }
 
     try {
-        // Request microphone access
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-            },
-        });
+        // iOS has limited support for audio constraints
+        const audioConstraints = isIOS()
+            ? {audio: true}
+            : {
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            };
 
+        const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
         const mimeType = getSupportedMimeType();
 
         return new MediaRecorderWrapper(stream, mimeType);
@@ -152,8 +207,46 @@ export async function getAudioRecorder(): Promise<AudioRecorder> {
 }
 
 /**
- * Convert audio blob to specific format if needed
- * For now, we'll use the native format, but this can be extended
+ * Get supported video MIME type
+ * iOS Safari requires MP4/H264, others prefer WebM/VP9
+ */
+export function getVideoMimeType(): string {
+    // iOS Safari needs H.264 + AAC
+    if (isIOS()) {
+        const iOSTypes = [
+            'video/mp4;codecs=h264,aac',
+            'video/mp4',
+        ];
+
+        for (const type of iOSTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+        return 'video/mp4'; // Fallback
+    }
+
+    // Non-iOS browsers
+    const types = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=vp8,vorbis',
+        'video/webm',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4',
+    ];
+
+    for (const type of types) {
+        if (MediaRecorder.isTypeSupported(type)) {
+            return type;
+        }
+    }
+
+    return 'video/webm'; // Fallback
+}
+
+/**
+ * Convert MIME type to file extension
  */
 export function getFileExtensionForMimeType(mimeType: string): string {
     if (mimeType.includes('webm')) {
@@ -164,6 +257,8 @@ export function getFileExtensionForMimeType(mimeType: string): string {
         return '.mp4';
     } else if (mimeType.includes('mpeg')) {
         return '.mp3';
+    } else if (mimeType.includes('aac')) {
+        return '.aac';
     }
     return '.webm'; // default
 }

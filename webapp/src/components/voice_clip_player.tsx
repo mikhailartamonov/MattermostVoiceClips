@@ -70,14 +70,20 @@ const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post}) => {
         setIsPlaying(!isPlaying);
     };
 
-    const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         const audio = audioRef.current;
         const progressBar = progressBarRef.current;
         if (!audio || !progressBar) return;
 
         const rect = progressBar.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = clickX / rect.width;
+
+        // Handle both mouse and touch events
+        const clientX = 'touches' in e
+            ? e.touches[0].clientX
+            : (e as React.MouseEvent).clientX;
+
+        const clickX = clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
         const newTime = percentage * duration;
 
         audio.currentTime = newTime;
@@ -137,6 +143,8 @@ const VoiceClipPlayer: React.FC<VoiceClipPlayerProps> = ({post}) => {
                         style={progressBarContainerStyle}
                         ref={progressBarRef}
                         onClick={handleSeek}
+                        onTouchStart={handleSeek}
+                        onTouchMove={handleSeek}
                     >
                         <div className="progress-bar-bg" style={progressBarBgStyle}>
                             <div
