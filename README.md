@@ -2,6 +2,26 @@
 
 Cross-platform voice and video messaging plugin for Mattermost with full support for web, desktop, iOS and Android.
 
+## Recording → playback flow
+
+```mermaid
+flowchart LR
+    A[User taps mic / cam<br/>or types /voice or /video] --> B[Permission prompt<br/>navigator.mediaDevices]
+    B -->|granted| C[MediaRecorder<br/>WebM Opus / VP9]
+    C --> D{Pause / resume<br/>during recording}
+    D --> E[Encode to Blob<br/>≤ 50 MB audio<br/>≤ 100 MB video]
+    E --> F[POST /api/v4/files<br/>multipart upload]
+    F --> G[Mattermost file store]
+    G --> H[Post message<br/>with file_ids]
+    H --> I[Recipient renders<br/>waveform / circle preview<br/>+ 1× / 1.25× / 1.5× / 2× speed]
+```
+
+Recording happens entirely in the browser — the plugin never proxies
+the audio. Only the final encoded Blob crosses the wire, via the
+standard Mattermost file-upload API. iOS Safari 14.3+ and Android
+Chrome both expose `MediaRecorder`, so the same code path works on
+mobile, desktop and web.
+
 ## Features
 
 ### Voice Messages
