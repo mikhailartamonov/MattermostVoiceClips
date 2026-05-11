@@ -243,7 +243,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setPreviewUrl('');
             }, 1000);
         } catch (err) {
-            setErrorMessage(t('failedToUploadVideo'));
+            setErrorMessage(t('failedToUpload'));
         }
     };
 

@@ -170,7 +170,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 onRecordingComplete(blob, dur);
             }
         } catch (err) {
-            setErrorMessage(t('failedToUploadVoice'));
+            setErrorMessage(t('failedToUpload'));
         }
     };
 
