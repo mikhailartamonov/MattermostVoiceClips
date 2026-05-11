@@ -1,7 +1,7 @@
 # Mattermost Voice Clips Plugin Makefile
 
 PLUGIN_ID := com.mattermost.voice-clips
-PLUGIN_VERSION := 0.1.0
+PLUGIN_VERSION := $(shell grep '"version"' plugin.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
 
 # Go parameters
 GOCMD := go

@@ -15,13 +15,13 @@ type configuration struct {
 	AudioFormat      string `json:"audio_format"`
 	EnableWaveform   bool   `json:"enable_waveform"`
 	MaxAudioFileSize int    `json:"max_audio_file_size"`
-	AudioBitrate     int    `json:"audio_bitrate"`
+	AudioBitrate     int    `json:"audio_bitrate,string"`
 
 	// Video settings
 	MaxVideoDuration int    `json:"max_video_duration"`
 	VideoFormat      string `json:"video_format"`
 	MaxVideoFileSize int    `json:"max_video_file_size"`
-	VideoBitrate     int    `json:"video_bitrate"`
+	VideoBitrate     int    `json:"video_bitrate,string"`
 
 	// Allowed formats (comma-separated)
 	AllowedAudioFormats string `json:"allowed_audio_formats"`

@@ -6,7 +6,7 @@
     "support_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/issues",
     "release_notes_url": "https://github.com/mikhailartamonov/MattermostVoiceClips/releases",
     "icon_path": "assets/icon.svg",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "min_server_version": "7.1.0",
     "server": {
         "executables": {
@@ -101,27 +101,27 @@
                 "display_name": "Audio Bitrate (kbps)",
                 "type": "dropdown",
                 "help_text": "Audio quality setting. Higher bitrate means better quality but larger files.",
-                "default": 128,
+                "default": "128",
                 "options": [
                     {
                         "display_name": "64 kbps - Low quality, small files",
-                        "value": 64
+                        "value": "64"
                     },
                     {
                         "display_name": "96 kbps - Medium quality",
-                        "value": 96
+                        "value": "96"
                     },
                     {
                         "display_name": "128 kbps - Good quality (recommended)",
-                        "value": 128
+                        "value": "128"
                     },
                     {
                         "display_name": "192 kbps - High quality",
-                        "value": 192
+                        "value": "192"
                     },
                     {
                         "display_name": "256 kbps - Very high quality",
-                        "value": 256
+                        "value": "256"
                     }
                 ]
             },
@@ -130,27 +130,27 @@
                 "display_name": "Video Bitrate (kbps)",
                 "type": "dropdown",
                 "help_text": "Video quality setting. Higher bitrate means better quality but larger files.",
-                "default": 1500,
+                "default": "1500",
                 "options": [
                     {
                         "display_name": "500 kbps - Low quality, small files",
-                        "value": 500
+                        "value": "500"
                     },
                     {
                         "display_name": "1000 kbps - Medium quality",
-                        "value": 1000
+                        "value": "1000"
                     },
                     {
                         "display_name": "1500 kbps - Good quality (recommended)",
-                        "value": 1500
+                        "value": "1500"
                     },
                     {
                         "display_name": "2500 kbps - High quality",
-                        "value": 2500
+                        "value": "2500"
                     },
                     {
                         "display_name": "4000 kbps - Very high quality",
-                        "value": 4000
+                        "value": "4000"
                     }
                 ]
             },

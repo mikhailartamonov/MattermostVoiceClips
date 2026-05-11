@@ -56,7 +56,7 @@ export async function fetchPluginConfig(): Promise<PluginConfig> {
     }
 
     // Start fetch
-    configPromise = (async () => {
+    configPromise = (async (): Promise<PluginConfig> => {
         try {
             const response = await fetch('/plugins/com.mattermost.voice-clips/api/v1/config', {
                 method: 'GET',
@@ -68,12 +68,18 @@ export async function fetchPluginConfig(): Promise<PluginConfig> {
             }
 
             const config = await response.json();
-            cachedConfig = {...defaultConfig, ...config};
-            return cachedConfig;
+            const merged: PluginConfig = {
+                ...defaultConfig,
+                ...config,
+                audio_bitrate: Number(config.audio_bitrate ?? defaultConfig.audio_bitrate),
+                video_bitrate: Number(config.video_bitrate ?? defaultConfig.video_bitrate),
+            };
+            cachedConfig = merged;
+            return merged;
         } catch (err) {
             // Return default config on error
             cachedConfig = defaultConfig;
-            return cachedConfig;
+            return defaultConfig;
         } finally {
             configPromise = null;
         }
