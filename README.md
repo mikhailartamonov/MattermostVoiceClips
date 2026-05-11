@@ -201,6 +201,7 @@ Built against `github.com/mattermost/mattermost/server/public v0.1.1`; server bi
 - [x] Multi-platform server binaries (Linux amd64/arm64, macOS amd64/arm64, Windows amd64) via GitHub Actions auto-release
 - [x] **v0.4.1** — pre-built `.tar.gz` published on every push to `master`; auto-tag from `plugin.json` version
 - [x] **v0.4.2** — hardened upload path (size cap from config, early auth, structured logging for orphaned files); auth required on `/api/v1/config`; double-mic-prompt fixed on mobile Safari; race guard on max-duration auto-stop; webapp ESLint config restored; all known dependency CVEs patched (`grpc`, `golang.org/x/crypto`, `minimatch`, `postcss`, `ajv`)
+- [x] **v0.5.0** — App Bar entry: a single plugin icon on the right-edge vertical strip opens a Voice / Video chooser modal and starts the recorder for the channel the user was viewing. Channel-header mic + cam icons preserved for backwards compatibility
 
 ### Planned (next minor)
 
