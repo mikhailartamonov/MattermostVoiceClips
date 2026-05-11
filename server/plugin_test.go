@@ -122,8 +122,10 @@ func TestHandleConfig(t *testing.T) {
 		EnableWaveform: true,
 	})
 
-	// Create request
+	// Create request with an authenticated user header — handleConfig
+	// rejects anonymous callers.
 	req := httptest.NewRequest("GET", "/api/v1/config", nil)
+	req.Header.Set("Mattermost-User-Id", "user1234567890123456789012345")
 	w := httptest.NewRecorder()
 
 	// Execute
@@ -138,6 +140,23 @@ func TestHandleConfig(t *testing.T) {
 	assert.Contains(t, string(body), "max_duration")
 	assert.Contains(t, string(body), "audio_format")
 	assert.Contains(t, string(body), "enable_waveform")
+}
+
+func TestHandleConfig_Unauthorized(t *testing.T) {
+	api := &plugintest.API{}
+	plugin := &Plugin{}
+	plugin.SetAPI(api)
+
+	plugin.setConfiguration(&configuration{MaxDuration: 300})
+
+	// No Mattermost-User-Id header — should be rejected.
+	req := httptest.NewRequest("GET", "/api/v1/config", nil)
+	w := httptest.NewRecorder()
+
+	plugin.handleConfig(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestHandleUpload_MethodNotAllowed(t *testing.T) {

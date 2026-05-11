@@ -56,16 +56,44 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse multipart form
-	err := r.ParseMultipartForm(32 << 20) // 32 MB max
+	config := p.getConfiguration()
+
+	// Compute the upload cap from config so ParseMultipartForm doesn't reject
+	// a payload that we'd otherwise accept. Cap is sized to the larger of the
+	// configured audio/video maxima with a small headroom for multipart envelope.
+	maxAudio := int64(config.MaxAudioFileSize) * 1024 * 1024
+	if maxAudio <= 0 {
+		maxAudio = 50 * 1024 * 1024
+	}
+	maxVideo := int64(config.MaxVideoFileSize) * 1024 * 1024
+	if maxVideo <= 0 {
+		maxVideo = 100 * 1024 * 1024
+	}
+	uploadCap := maxAudio
+	if maxVideo > uploadCap {
+		uploadCap = maxVideo
+	}
+	uploadCap += 4 << 20 // 4 MB headroom for form fields + boundaries
+
+	// Reject the request body early so a hostile peer can't make us read
+	// gigabytes into memory before the size check below fires.
+	r.Body = http.MaxBytesReader(w, r.Body, uploadCap)
+
+	err := r.ParseMultipartForm(uploadCap)
 	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		http.Error(w, "Failed to parse form (payload too large?)", http.StatusBadRequest)
 		return
 	}
 
 	channelID := r.FormValue("channel_id")
 	if channelID == "" {
 		http.Error(w, "channel_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Authorize *before* we read the file body.
+	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
+		http.Error(w, "No permission to post in this channel", http.StatusForbidden)
 		return
 	}
 
@@ -97,18 +125,11 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate file size using config
-	config := p.getConfiguration()
 	var maxFileSize int64
 	if isVideo {
-		maxFileSize = int64(config.MaxVideoFileSize) * 1024 * 1024
-		if maxFileSize == 0 {
-			maxFileSize = 100 * 1024 * 1024 // Default 100 MB for video
-		}
+		maxFileSize = maxVideo
 	} else {
-		maxFileSize = int64(config.MaxAudioFileSize) * 1024 * 1024
-		if maxFileSize == 0 {
-			maxFileSize = 50 * 1024 * 1024 // Default 50 MB for audio
-		}
+		maxFileSize = maxAudio
 	}
 	if int64(len(data)) > maxFileSize {
 		http.Error(w, fmt.Sprintf("File size exceeds maximum allowed (%d MB)", maxFileSize/(1024*1024)), http.StatusRequestEntityTooLarge)
@@ -121,14 +142,10 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine file extension and mime type based on format
+	// Determine file extension based on uploaded filename, defaulting to webm.
 	extension := filepath.Ext(handler.Filename)
 	if extension == "" {
-		if isVideo {
-			extension = ".webm"
-		} else {
-			extension = ".webm"
-		}
+		extension = ".webm"
 	}
 
 	// Validate file extension using config
@@ -167,12 +184,6 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Validate MIME type from file header (magic numbers)
 	if !isValidMediaFile(data, extension, isVideo) {
 		http.Error(w, "File content does not match expected format", http.StatusBadRequest)
-		return
-	}
-
-	// Validate channel access
-	if !p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost) {
-		http.Error(w, "No permission to post in this channel", http.StatusForbidden)
 		return
 	}
 
@@ -222,13 +233,14 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create post with the media file
+	// Build the post. Message is intentionally empty: the custom post type
+	// (custom_voice_clip / custom_video_clip) is rendered entirely by the
+	// webapp, which already shows a localized header above the player.
 	var post *model.Post
 	if isVideo {
 		post = &model.Post{
 			UserId:    userID,
 			ChannelId: channelID,
-			Message:   "📹 Video message",
 			FileIds:   []string{fileInfo.Id},
 			Type:      "custom_video_clip",
 			Props: map[string]interface{}{
@@ -242,7 +254,6 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		post = &model.Post{
 			UserId:    userID,
 			ChannelId: channelID,
-			Message:   "🎤 Voice message",
 			FileIds:   []string{fileInfo.Id},
 			Type:      "custom_voice_clip",
 			Props: map[string]interface{}{
@@ -256,7 +267,11 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	createdPost, appErr := p.API.CreatePost(post)
 	if appErr != nil {
-		p.API.LogError("Failed to create post", "error", appErr.Error())
+		// CreatePost failed after UploadFile succeeded — the file is now
+		// orphaned in the Mattermost file store. Mattermost's plugin API
+		// does not expose file deletion, so log loudly so admins can audit.
+		p.API.LogError("Failed to create post; uploaded file is now orphaned",
+			"file_id", fileInfo.Id, "channel_id", channelID, "user_id", userID, "error", appErr.Error())
 		http.Error(w, "Failed to create post: "+appErr.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -273,6 +288,13 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 // handleConfig returns plugin configuration
 func (p *Plugin) handleConfig(w http.ResponseWriter, r *http.Request) {
+	// Require an authenticated Mattermost user. The config doesn't contain
+	// secrets, but exposing it to anonymous callers is unnecessary.
+	if r.Header.Get("Mattermost-User-Id") == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	config := p.getConfiguration()
 
 	response := map[string]interface{}{
