@@ -202,14 +202,14 @@ Built against `github.com/mattermost/mattermost/server/public v0.1.1`; server bi
 - [x] **v0.4.1** — pre-built `.tar.gz` published on every push to `master`; auto-tag from `plugin.json` version
 - [x] **v0.4.2** — hardened upload path (size cap from config, early auth, structured logging for orphaned files); auth required on `/api/v1/config`; double-mic-prompt fixed on mobile Safari; race guard on max-duration auto-stop; webapp ESLint config restored; all known dependency CVEs patched (`grpc`, `golang.org/x/crypto`, `minimatch`, `postcss`, `ajv`)
 - [x] **v0.5.0** — App Bar entry: a single plugin icon on the right-edge vertical strip opens a Voice / Video chooser modal and starts the recorder for the channel the user was viewing. Channel-header mic + cam icons preserved for backwards compatibility
+- [x] **v0.6.0** — Per-channel toggle via `/voice-clips [enable|disable|status]` slash command (channel admins only for public/private channels; any DM participant for DMs); server enforces the toggle on the upload endpoint and the recorder surfaces the server's reason to the user. CI now runs `npm run lint` as a blocking gate alongside `golangci-lint`
 
 ### Planned (next minor)
 
 - [ ] Drag-to-cancel gesture during recording (Telegram-style swipe-left)
 - [ ] Lock-to-record toggle so the mic stays open without holding the button on mobile
 - [ ] Reply / quote support for `custom_voice_clip` and `custom_video_clip` post types
-- [ ] Per-channel enable/disable from channel settings
-- [ ] Wire `npm run lint` into the CI Lint job as a blocking gate (currently only `golangci-lint` blocks)
+- [ ] Per-channel toggle from a channel-header dropdown item (currently only via slash command)
 
 ### Under consideration
 
