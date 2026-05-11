@@ -175,6 +175,16 @@ See [Development Guide](doc/DEVELOPMENT.md) for more details.
 - iOS Safari may require user interaction before first microphone permission request
 - Old browsers (< 2020) may not support MediaRecorder API
 
+## Mattermost compatibility
+
+| Server   | Status   |
+|----------|----------|
+| 7.1.x    | Floor declared in `plugin.json`; older versions refuse to load the plugin |
+| 7.x – 10.x | Supported — only stable public APIs (`pluginapi.Client`, `API.UploadFile`/`CreatePost`/`HasPermissionToChannel`/`RegisterCommand`/`PublishWebSocketEvent`, webapp `registerChannelHeaderButtonAction`/`registerPostTypeComponent`/`registerWebSocketEventHandler`/`registerRootComponent`) are used |
+| Mobile   | Mattermost Mobile 2.x+ on iOS 14.3+ / modern Android (recording uses WebView + `MediaRecorder`) |
+
+Built against `github.com/mattermost/mattermost/server/public v0.1.1`; server binaries are cross-compiled for Linux amd64/arm64, macOS amd64/arm64, Windows amd64.
+
 ## Roadmap
 
 ### Shipped
@@ -189,10 +199,8 @@ See [Development Guide](doc/DEVELOPMENT.md) for more details.
 - [x] i18n (12 languages, system-language auto-detect)
 - [x] Notification sound on incoming clips
 - [x] Multi-platform server binaries (Linux amd64/arm64, macOS amd64/arm64, Windows amd64) via GitHub Actions auto-release
-
-### In progress
-
-- [ ] Pre-built `.tar.gz` published on every push to `master` via the auto-release workflow — first release: **v0.4.1**
+- [x] **v0.4.1** — pre-built `.tar.gz` published on every push to `master`; auto-tag from `plugin.json` version
+- [x] **v0.4.2** — hardened upload path (size cap from config, early auth, structured logging for orphaned files); auth required on `/api/v1/config`; double-mic-prompt fixed on mobile Safari; race guard on max-duration auto-stop; webapp ESLint config restored; all known dependency CVEs patched (`grpc`, `golang.org/x/crypto`, `minimatch`, `postcss`, `ajv`)
 
 ### Planned (next minor)
 
@@ -200,7 +208,7 @@ See [Development Guide](doc/DEVELOPMENT.md) for more details.
 - [ ] Lock-to-record toggle so the mic stays open without holding the button on mobile
 - [ ] Reply / quote support for `custom_voice_clip` and `custom_video_clip` post types
 - [ ] Per-channel enable/disable from channel settings
-- [ ] Lint + unit test coverage gates in CI (currently informational only)
+- [ ] Wire `npm run lint` into the CI Lint job as a blocking gate (currently only `golangci-lint` blocks)
 
 ### Under consideration
 
