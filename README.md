@@ -1,5 +1,10 @@
 # Mattermost Voice & Video Clips
 
+[![CI](https://github.com/mikhailartamonov/MattermostVoiceClips/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mikhailartamonov/MattermostVoiceClips/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/mikhailartamonov/MattermostVoiceClips?display_name=tag&sort=semver)](https://github.com/mikhailartamonov/MattermostVoiceClips/releases/latest)
+[![Mattermost ≥ 7.1](https://img.shields.io/badge/Mattermost-%E2%89%A5%207.1-1e325c)](https://mattermost.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Cross-platform voice and video messaging plugin for Mattermost with full support for web, desktop, iOS and Android.
 
 ## Recording → playback flow
@@ -76,7 +81,8 @@ The existing [mattermost-plugin-voice](https://github.com/streamer45/mattermost-
 git clone https://github.com/mikhailartamonov/MattermostVoiceClips.git
 cd MattermostVoiceClips
 make dist
-# Plugin will be created at dist/com.mattermost.voice-clips-X.X.X.tar.gz
+# Plugin is created at dist/com.mattermost.voice-clips-<version>.tar.gz
+# where <version> is read from plugin.json (no manual sync needed).
 ```
 
 ## Usage
@@ -168,6 +174,42 @@ See [Development Guide](doc/DEVELOPMENT.md) for more details.
 
 - iOS Safari may require user interaction before first microphone permission request
 - Old browsers (< 2020) may not support MediaRecorder API
+
+## Roadmap
+
+### Shipped
+
+- [x] Cross-platform recording — web, desktop, iOS Safari 14.3+, Android Chrome
+- [x] Audio: WebM/Opus, OGG/Opus, MP4/AAC, plus MP3 / WAV fallbacks
+- [x] Video: WebM/VP9 + VP8, MP4/H.264 fallback, Telegram-style circular preview
+- [x] Pause / resume during recording (where the browser supports it)
+- [x] Playback: waveform visualization, seek, 1× / 1.25× / 1.5× / 2× speed
+- [x] Slash commands `/voice` and `/video`
+- [x] System Console settings: durations, file-size caps, bitrates, allowed formats, waveform toggle
+- [x] i18n (12 languages, system-language auto-detect)
+- [x] Notification sound on incoming clips
+- [x] Multi-platform server binaries (Linux amd64/arm64, macOS amd64/arm64, Windows amd64) via GitHub Actions auto-release
+
+### In progress
+
+- [ ] Pre-built `.tar.gz` published on every push to `master` via the auto-release workflow — first release: **v0.4.1**
+
+### Planned (next minor)
+
+- [ ] Drag-to-cancel gesture during recording (Telegram-style swipe-left)
+- [ ] Lock-to-record toggle so the mic stays open without holding the button on mobile
+- [ ] Reply / quote support for `custom_voice_clip` and `custom_video_clip` post types
+- [ ] Per-channel enable/disable from channel settings
+- [ ] Lint + unit test coverage gates in CI (currently informational only)
+
+### Under consideration
+
+- [ ] Server-side transcription hook (Whisper / external API), surfaced as searchable post metadata
+- [ ] Background-noise suppression beyond the browser default
+- [ ] Per-user preferred bitrate preset
+- [ ] Accessibility pass — keyboard-only recording flow, ARIA live regions for state
+
+Open an [issue](https://github.com/mikhailartamonov/MattermostVoiceClips/issues) or PR if you want to nudge anything up the list.
 
 ## License
 
