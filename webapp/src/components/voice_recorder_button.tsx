@@ -181,7 +181,11 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             });
 
             if (!response.ok) {
-                throw new Error('Upload failed');
+                // Read the server's plain-text error body so messages like
+                // "Voice and video clips are disabled in this channel" actually
+                // reach the user rather than the generic fallback.
+                const body = await response.text();
+                throw new Error(body.trim() || 'Upload failed');
             }
 
             await response.json();
@@ -190,7 +194,8 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 onRecordingComplete(blob, dur);
             }
         } catch (err) {
-            setErrorMessage(t('failedToUpload'));
+            const msg = (err as Error)?.message?.trim();
+            setErrorMessage(msg && msg !== 'Upload failed' ? msg : t('failedToUpload'));
         }
     };
 

@@ -97,6 +97,12 @@ func (p *Plugin) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Channel-level kill switch. Toggled by channel admins via /voice-clips.
+	if p.isChannelDisabled(channelID) {
+		http.Error(w, "Voice and video clips are disabled in this channel", http.StatusForbidden)
+		return
+	}
+
 	// Determine if this is audio or video
 	mediaType := r.FormValue("type")
 	isVideo := mediaType == "video"
@@ -333,9 +339,32 @@ func (p *Plugin) OnActivate() error {
 	return nil
 }
 
-// registerCommands registers /voice and /video slash commands
+// kvChannelDisabledPrefix is the KV key prefix marking channels where clips are turned off.
+// A non-empty value at "voice-clips-disabled:<channelID>" means recording is blocked.
+const kvChannelDisabledPrefix = "voice-clips-disabled:"
+
+// isChannelDisabled reports whether voice/video clips are turned off in the given channel.
+func (p *Plugin) isChannelDisabled(channelID string) bool {
+	val, err := p.API.KVGet(kvChannelDisabledPrefix + channelID)
+	if err != nil {
+		// KV read failures are logged but treated as "not disabled" so a
+		// transient KV outage doesn't block all uploads.
+		p.API.LogWarn("Failed to read per-channel state", "channel_id", channelID, "error", err.Error())
+		return false
+	}
+	return len(val) > 0
+}
+
+// setChannelDisabled flips the per-channel toggle.
+func (p *Plugin) setChannelDisabled(channelID string, disabled bool) *model.AppError {
+	if disabled {
+		return p.API.KVSet(kvChannelDisabledPrefix+channelID, []byte("1"))
+	}
+	return p.API.KVDelete(kvChannelDisabledPrefix + channelID)
+}
+
+// registerCommands registers /voice, /video, and /voice-clips slash commands.
 func (p *Plugin) registerCommands() error {
-	// Register /voice command
 	if err := p.API.RegisterCommand(&model.Command{
 		Trigger:          "voice",
 		DisplayName:      "Voice Message",
@@ -347,20 +376,49 @@ func (p *Plugin) registerCommands() error {
 		return err
 	}
 
-	// Register /video command
-	return p.API.RegisterCommand(&model.Command{
+	if err := p.API.RegisterCommand(&model.Command{
 		Trigger:          "video",
 		DisplayName:      "Video Message",
 		Description:      "Record and send a video message",
 		AutoComplete:     true,
 		AutoCompleteDesc: "Open video message recorder",
 		AutoCompleteHint: "",
+	}); err != nil {
+		return err
+	}
+
+	return p.API.RegisterCommand(&model.Command{
+		Trigger:          "voice-clips",
+		DisplayName:      "Voice & Video Clips",
+		Description:      "Manage Voice & Video Clips for this channel",
+		AutoComplete:     true,
+		AutoCompleteDesc: "Enable, disable, or check status of clips in this channel",
+		AutoCompleteHint: "[enable|disable|status]",
+		AutocompleteData: buildVoiceClipsAutocomplete(),
 	})
 }
 
-// ExecuteCommand handles the /voice and /video commands
+// buildVoiceClipsAutocomplete describes the /voice-clips subcommands so users
+// get inline suggestions as they type.
+func buildVoiceClipsAutocomplete() *model.AutocompleteData {
+	root := model.NewAutocompleteData("voice-clips", "[enable|disable|status]", "Manage Voice & Video Clips for this channel")
+	root.AddCommand(model.NewAutocompleteData("enable", "", "Allow recording voice and video clips in this channel"))
+	root.AddCommand(model.NewAutocompleteData("disable", "", "Disallow recording voice and video clips in this channel"))
+	root.AddCommand(model.NewAutocompleteData("status", "", "Show whether clips are enabled in this channel"))
+	return root
+}
+
+// ExecuteCommand handles /voice, /video, and /voice-clips.
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	switch args.Command {
+	fields := strings.Fields(args.Command)
+	if len(fields) == 0 {
+		return &model.CommandResponse{}, nil
+	}
+
+	switch fields[0] {
+	case "/voice-clips":
+		return p.handleVoiceClipsCommand(args, fields[1:]), nil
+
 	case "/voice":
 		post := &model.Post{
 			UserId:    args.UserId,
@@ -391,6 +449,70 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	return &model.CommandResponse{}, nil
+}
+
+// handleVoiceClipsCommand runs `/voice-clips <sub>` (enable, disable, status).
+// enable/disable require PermissionManageChannelProperties — i.e. channel admins.
+// Replies are ephemeral so the rest of the channel doesn't see them.
+func (p *Plugin) handleVoiceClipsCommand(args *model.CommandArgs, sub []string) *model.CommandResponse {
+	if len(sub) == 0 {
+		return ephemeralResponse("Usage: `/voice-clips [enable|disable|status]`")
+	}
+
+	switch strings.ToLower(sub[0]) {
+	case "enable", "disable":
+		if !p.canManageChannel(args.UserId, args.ChannelId) {
+			return ephemeralResponse("Only channel administrators can change this setting.")
+		}
+		disabled := sub[0] == "disable"
+		if err := p.setChannelDisabled(args.ChannelId, disabled); err != nil {
+			p.API.LogError("Failed to update per-channel state", "channel_id", args.ChannelId, "error", err.Error())
+			return ephemeralResponse("Failed to update setting: " + err.Error())
+		}
+		if disabled {
+			return ephemeralResponse("Voice & Video Clips are now **disabled** in this channel. Existing clips remain; new recordings will be refused.")
+		}
+		return ephemeralResponse("Voice & Video Clips are now **enabled** in this channel.")
+
+	case "status":
+		if p.isChannelDisabled(args.ChannelId) {
+			return ephemeralResponse("Voice & Video Clips are **disabled** in this channel.")
+		}
+		return ephemeralResponse("Voice & Video Clips are **enabled** in this channel.")
+
+	default:
+		return ephemeralResponse("Usage: `/voice-clips [enable|disable|status]`")
+	}
+}
+
+// canManageChannel returns true if the user is allowed to change channel-level
+// plugin settings for this channel. For public/private channels that means
+// holding the channel-admin permission; for DMs and group DMs there is no
+// admin concept so any participant qualifies.
+func (p *Plugin) canManageChannel(userID, channelID string) bool {
+	channel, appErr := p.API.GetChannel(channelID)
+	if appErr != nil {
+		p.API.LogWarn("Failed to read channel for permission check",
+			"channel_id", channelID, "error", appErr.Error())
+		return false
+	}
+
+	switch channel.Type {
+	case model.ChannelTypePrivate:
+		return p.API.HasPermissionToChannel(userID, channelID, model.PermissionManagePrivateChannelProperties)
+	case model.ChannelTypeDirect, model.ChannelTypeGroup:
+		// DM/Group DM: no admin role, any participant who can post may toggle.
+		return p.API.HasPermissionToChannel(userID, channelID, model.PermissionCreatePost)
+	default:
+		return p.API.HasPermissionToChannel(userID, channelID, model.PermissionManagePublicChannelProperties)
+	}
+}
+
+func ephemeralResponse(text string) *model.CommandResponse {
+	return &model.CommandResponse{
+		ResponseType: model.CommandResponseTypeEphemeral,
+		Text:         text,
+	}
 }
 
 // OnDeactivate is called when the plugin is deactivated

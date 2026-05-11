@@ -266,7 +266,10 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
             });
 
             if (!response.ok) {
-                throw new Error('Upload failed');
+                // Propagate the server message so "disabled in this channel"
+                // and similar reach the user verbatim.
+                const body = await response.text();
+                throw new Error(body.trim() || 'Upload failed');
             }
 
             await response.json();
@@ -281,7 +284,8 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 setPreviewUrl('');
             }, 1000);
         } catch (err) {
-            setErrorMessage(t('failedToUpload'));
+            const msg = (err as Error)?.message?.trim();
+            setErrorMessage(msg && msg !== 'Upload failed' ? msg : t('failedToUpload'));
         }
     };
 
