@@ -4,8 +4,27 @@ import VoiceRecorderButton from './components/voice_recorder_button';
 import VoiceClipPlayer from './components/voice_clip_player';
 import VideoRecorderButton from './components/video_recorder_button';
 import VideoClipPlayer from './components/video_clip_player';
+import RecorderChooser from './components/recorder_chooser';
 import {initI18n, t} from './i18n/translations';
 import {playVoiceMessageSound, playVideoMessageSound} from './utils/notification_sound';
+
+// Inlined SVG for the App Bar icon. Using a data: URI avoids needing a
+// static-file route on the server side. fill="currentColor" lets the icon
+// adopt Mattermost's App Bar foreground color so it looks right in both
+// light and dark themes.
+const APP_BAR_ICON_URL = 'data:image/svg+xml;base64,' + btoa(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">' +
+    '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>' +
+    '<path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>' +
+    '</svg>',
+);
+
+interface AppBarChannel {
+    id: string;
+    name?: string;
+    team_id?: string;
+    type?: string;
+}
 
 // PluginRegistry is injected by Mattermost
 interface PluginRegistry {
@@ -18,6 +37,12 @@ interface PluginRegistry {
     registerPostTypeComponent: (typeName: string, component: React.ComponentType<any>) => void;
     registerWebSocketEventHandler: (event: string, handler: (msg: any) => void) => void;
     registerRootComponent?: (component: React.ComponentType<any>) => void;
+    // Mattermost 7+ — right-edge App Bar. Optional so older servers still load us.
+    registerAppBarComponent?: (
+        iconURL: string,
+        action: (channel: AppBarChannel | null) => void,
+        tooltipText: React.ReactNode
+    ) => string;
 }
 
 // Combined component for root registration
@@ -25,6 +50,7 @@ const RecordersRoot: React.FC = () => (
     <>
         <VoiceRecorderButton />
         <VideoRecorderButton />
+        <RecorderChooser />
     </>
 );
 
@@ -54,6 +80,23 @@ class Plugin {
             t('videoMessage'),
             t('recordVideoMessage')
         );
+
+        // Register App Bar entry (right vertical strip, Mattermost 7+).
+        // Optional — older servers don't expose this method, so guard it.
+        // Clicking the App Bar icon opens our chooser modal, which then
+        // dispatches the existing open-voice-recorder / open-video-recorder
+        // events with the channel id threaded through.
+        if (registry.registerAppBarComponent) {
+            registry.registerAppBarComponent(
+                APP_BAR_ICON_URL,
+                (channel) => {
+                    window.dispatchEvent(new CustomEvent('open-recorder-chooser', {
+                        detail: {channelId: channel?.id},
+                    }));
+                },
+                t('voiceMessage') + ' / ' + t('videoMessage'),
+            );
+        }
 
         // Listen for new posts to play notification sounds
         registry.registerWebSocketEventHandler(

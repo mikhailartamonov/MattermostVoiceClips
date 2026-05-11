@@ -16,6 +16,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [maxDuration, setMaxDuration] = useState(300);
+    const [triggeredChannelId, setTriggeredChannelId] = useState<string | null>(null);
 
     const recorderRef = useRef<any>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -23,7 +24,13 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
 
     useEffect(() => {
         // Listen for custom event to open recorder
-        const handleOpenRecorder = async () => {
+        const handleOpenRecorder = async (event: Event) => {
+            // App Bar / chooser callers attach the channel id to the event so
+            // the upload targets the channel the user was viewing *at click
+            // time*, not whatever the URL happens to parse to later.
+            const detail = (event as CustomEvent).detail as {channelId?: string} | undefined;
+            setTriggeredChannelId(detail?.channelId ?? null);
+
             // Reset transient state every time the modal opens so a previous
             // failed attempt doesn't leave a stale error or permission flag.
             setErrorMessage('');
@@ -150,12 +157,15 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
         setIsRecording(false);
         setIsPaused(false);
         setDuration(0);
+        setTriggeredChannelId(null);
         setIsModalOpen(false);
     };
 
     const uploadAudio = async (blob: Blob, dur: number, mimeType: string) => {
         const formData = new FormData();
-        const currentChannelId = channelId || getCurrentChannelId();
+        // Prefer the explicit channel passed via the trigger event (App Bar
+        // chooser), then the prop, then the URL fallback.
+        const currentChannelId = triggeredChannelId || channelId || getCurrentChannelId();
 
         // Use correct file extension based on actual mime type
         const extension = getFileExtensionForMimeType(mimeType);

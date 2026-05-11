@@ -17,6 +17,7 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [maxDuration, setMaxDuration] = useState(120);
+    const [triggeredChannelId, setTriggeredChannelId] = useState<string | null>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,7 +27,12 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     const isStoppingRef = useRef(false);
 
     useEffect(() => {
-        const handleOpenRecorder = async () => {
+        const handleOpenRecorder = async (event: Event) => {
+            // App Bar / chooser callers attach channel.id to event.detail so
+            // upload targets the right channel even if the URL doesn't.
+            const detail = (event as CustomEvent).detail as {channelId?: string} | undefined;
+            setTriggeredChannelId(detail?.channelId ?? null);
+
             // Reset transient state on every modal open so a previous denied
             // permission or error doesn't show in the new session.
             setErrorMessage('');
@@ -235,12 +241,15 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
         setIsPaused(false);
         setDuration(0);
         setPreviewUrl('');
+        setTriggeredChannelId(null);
         setIsModalOpen(false);
     };
 
     const uploadVideo = async (blob: Blob, dur: number, mimeType: string) => {
         const formData = new FormData();
-        const currentChannelId = channelId || getCurrentChannelId();
+        // Prefer the explicit channel passed via the trigger event (App Bar
+        // chooser), then the prop, then the URL fallback.
+        const currentChannelId = triggeredChannelId || channelId || getCurrentChannelId();
 
         // Use correct file extension based on actual mime type
         const extension = getFileExtensionForMimeType(mimeType);
