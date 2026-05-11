@@ -23,9 +23,14 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     const streamRef = useRef<MediaStream | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const isStoppingRef = useRef(false);
 
     useEffect(() => {
         const handleOpenRecorder = async () => {
+            // Reset transient state on every modal open so a previous denied
+            // permission or error doesn't show in the new session.
+            setErrorMessage('');
+            setHasPermission(null);
             // Load config when opening
             await fetchPluginConfig();
             setMaxDuration(getMaxVideoDuration());
@@ -98,6 +103,9 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     };
 
     const startRecording = async () => {
+        setErrorMessage('');
+        isStoppingRef.current = false;
+
         const permitted = await requestPermission();
         if (!permitted || !streamRef.current) {
             return;
@@ -134,6 +142,16 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
                 const blob = new Blob(chunksRef.current, {type: actualMimeType});
                 const url = URL.createObjectURL(blob);
                 setPreviewUrl(url);
+
+                // Tracks must outlive recorder.stop(): stopping them before
+                // onstop fires can truncate the final media chunk on some
+                // browsers (notably Firefox). Stop them now that we have the
+                // assembled blob.
+                if (streamRef.current) {
+                    streamRef.current.getTracks().forEach((track) => track.stop());
+                    streamRef.current = null;
+                }
+
                 uploadVideo(blob, duration, actualMimeType);
             };
 
@@ -172,25 +190,33 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current) {
-            mediaRecorderRef.current.stop();
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach((track) => track.stop());
-            }
-
-            setIsRecording(false);
-            setIsPaused(false);
+        // Guard against maxDuration auto-stop racing a user-clicked stop.
+        if (isStoppingRef.current || !mediaRecorderRef.current) {
+            return;
         }
+        isStoppingRef.current = true;
+
+        // Note: the stream tracks are stopped inside recorder.onstop, after
+        // the final dataavailable event has been delivered.
+        mediaRecorderRef.current.stop();
+
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+
+        setIsRecording(false);
+        setIsPaused(false);
     };
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
+            // Detach onstop so the discarded recording isn't uploaded.
+            mediaRecorderRef.current.onstop = null;
+            try {
+                mediaRecorderRef.current.stop();
+            } catch (_) {
+                // Already inactive — ignore.
+            }
 
             if (timerRef.current) {
                 clearInterval(timerRef.current);
@@ -199,9 +225,12 @@ const VideoRecorderButton: React.FC<VideoRecorderButtonProps> = ({channelId, onR
 
         if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
         }
 
         chunksRef.current = [];
+        mediaRecorderRef.current = null;
+        isStoppingRef.current = false;
         setIsRecording(false);
         setIsPaused(false);
         setDuration(0);

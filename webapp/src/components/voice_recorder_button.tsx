@@ -19,10 +19,15 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
 
     const recorderRef = useRef<any>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const isStoppingRef = useRef(false);
 
     useEffect(() => {
         // Listen for custom event to open recorder
         const handleOpenRecorder = async () => {
+            // Reset transient state every time the modal opens so a previous
+            // failed attempt doesn't leave a stale error or permission flag.
+            setErrorMessage('');
+            setHasPermission(null);
             // Load config when opening
             await fetchPluginConfig();
             setMaxDuration(getMaxAudioDuration());
@@ -46,31 +51,21 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
         }
     }, [duration, maxDuration, isRecording]);
 
-    const requestPermission = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-            stream.getTracks().forEach((track) => track.stop());
-            setHasPermission(true);
-            setErrorMessage('');
-            return true;
-        } catch (err) {
-            setHasPermission(false);
-            setErrorMessage(t('microphonePermissionDenied'));
-            return false;
-        }
-    };
-
     const startRecording = async () => {
-        const permitted = await requestPermission();
-        if (!permitted) {
-            return;
-        }
+        // Clear any error from a previous attempt so the retry UI is clean.
+        setErrorMessage('');
+        isStoppingRef.current = false;
 
         try {
             // Get audio bitrate from config
             const audioBitrate = getAudioBitrate();
+            // getAudioRecorder() calls getUserMedia internally with the audio
+            // constraints we actually want — relying on it for the permission
+            // prompt avoids a second prompt on browsers that distinguish
+            // permission requests by constraint set (notably mobile Safari).
             const recorder = await getAudioRecorder(audioBitrate);
             recorderRef.current = recorder;
+            setHasPermission(true);
 
             recorder.start();
             setIsRecording(true);
@@ -81,7 +76,13 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
                 setDuration((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            setErrorMessage(t('failedToStartRecording'));
+            const msg = (err as Error)?.message || '';
+            if (/permission|microphone/i.test(msg)) {
+                setHasPermission(false);
+                setErrorMessage(t('microphonePermissionDenied'));
+            } else {
+                setErrorMessage(t('failedToStartRecording'));
+            }
         }
     };
 
@@ -108,24 +109,31 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
     };
 
     const stopRecording = async () => {
-        if (recorderRef.current) {
-            const mimeType = recorderRef.current.getMimeType();
-            const audioBlob = await recorderRef.current.stop();
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-
-            setIsRecording(false);
-            setIsPaused(false);
-
-            // Upload the audio with correct file extension
-            await uploadAudio(audioBlob, duration, mimeType);
-
-            // Reset state
-            setDuration(0);
-            setIsModalOpen(false);
+        // Guard against the maxDuration auto-stop firing concurrently with a
+        // user-clicked Stop — the second MediaRecorder.stop() would reject
+        // ("MediaRecorder is not active") and skip the upload.
+        if (isStoppingRef.current || !recorderRef.current) {
+            return;
         }
+        isStoppingRef.current = true;
+
+        const mimeType = recorderRef.current.getMimeType();
+        const audioBlob = await recorderRef.current.stop();
+
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+
+        setIsRecording(false);
+        setIsPaused(false);
+
+        // Upload the audio with correct file extension
+        await uploadAudio(audioBlob, duration, mimeType);
+
+        // Reset state
+        recorderRef.current = null;
+        setDuration(0);
+        setIsModalOpen(false);
     };
 
     const cancelRecording = () => {
@@ -137,6 +145,8 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({channelId, onR
             }
         }
 
+        recorderRef.current = null;
+        isStoppingRef.current = false;
         setIsRecording(false);
         setIsPaused(false);
         setDuration(0);
